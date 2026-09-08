@@ -10,9 +10,9 @@ services:
         COMMIT: ${COMMIT:-none}
         BUILD_DATE: ${BUILD_DATE:-unknown}
         UI_VERSION: ${UI_VERSION:-dev}
-        FRONTEND_REPOSITORY: ${FRONTEND_REPOSITORY:-https://github.com/kittors/codeProxy.git}
-        FRONTEND_REF: ${FRONTEND_REF:-main}
-        FRONTEND_COMMIT: ${FRONTEND_COMMIT:-}
+        FRONTEND_REPOSITORY: ${FRONTEND_REPOSITORY:-https://github.com/rromuss/codeProxy.git}
+        FRONTEND_REF: ${FRONTEND_REF:-hermes-stable}
+        FRONTEND_COMMIT: ${FRONTEND_COMMIT:-d1e963d31b785986d355f85ccdf891ad8dcfc7f8}
     container_name: cli-proxy-api
     # env_file:
     #   - .env

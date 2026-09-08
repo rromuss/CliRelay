@@ -98,3 +98,24 @@ func TestRepositoryComposeDoesNotCreateEnvDirectoryForUpdater(t *testing.T) {
 		}
 	}
 }
+
+func TestRepositoryBuildPinsHermesPanelSource(t *testing.T) {
+	const (
+		panelRepository = "https://github.com/rromuss/codeProxy.git"
+		panelRef        = "hermes-stable"
+		panelCommit     = "d1e963d31b785986d355f85ccdf891ad8dcfc7f8"
+	)
+
+	for _, file := range []string{"Dockerfile", "docker-compose.yml"} {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("read %s: %v", file, err)
+		}
+		content := string(data)
+		for _, want := range []string{panelRepository, panelRef, panelCommit} {
+			if !strings.Contains(content, want) {
+				t.Fatalf("%s missing pinned Hermes panel source %q", file, want)
+			}
+		}
+	}
+}

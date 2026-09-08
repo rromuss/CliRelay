@@ -1,9 +1,9 @@
 # ── Frontend source ──────────────────────────────────────────────────────────
 FROM --platform=$BUILDPLATFORM alpine:3.22.0 AS frontend-source
 
-ARG FRONTEND_REPOSITORY=https://github.com/kittors/codeProxy.git
-ARG FRONTEND_REF=main
-ARG FRONTEND_COMMIT=
+ARG FRONTEND_REPOSITORY=https://github.com/rromuss/codeProxy.git
+ARG FRONTEND_REF=hermes-stable
+ARG FRONTEND_COMMIT=d1e963d31b785986d355f85ccdf891ad8dcfc7f8
 
 RUN apk add --no-cache git ca-certificates
 
@@ -27,9 +27,9 @@ FROM --platform=$BUILDPLATFORM oven/bun:1 AS frontend-builder
 WORKDIR /frontend
 COPY --from=frontend-source /src/frontend/ .
 ARG UI_VERSION=dev
-ARG FRONTEND_REPOSITORY=https://github.com/kittors/codeProxy.git
-ARG FRONTEND_REF=main
-ARG FRONTEND_COMMIT=none
+ARG FRONTEND_REPOSITORY=https://github.com/rromuss/codeProxy.git
+ARG FRONTEND_REF=hermes-stable
+ARG FRONTEND_COMMIT=d1e963d31b785986d355f85ccdf891ad8dcfc7f8
 ARG BUILD_DATE=unknown
 ENV VITE_APP_VERSION=${UI_VERSION}
 ENV VITE_PANEL_REPOSITORY=${FRONTEND_REPOSITORY}
@@ -55,8 +55,8 @@ ARG VERSION=dev
 ARG COMMIT=none
 ARG BUILD_DATE=unknown
 ARG UI_VERSION=dev
-ARG FRONTEND_REF=main
-ARG FRONTEND_COMMIT=none
+ARG FRONTEND_REF=hermes-stable
+ARG FRONTEND_COMMIT=d1e963d31b785986d355f85ccdf891ad8dcfc7f8
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
   -ldflags="-s -w \
