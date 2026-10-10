@@ -38,6 +38,55 @@ func TestHermesFallbackSingleActualUpstreamRequestOnNoCapacity(t *testing.T) {
 	}
 }
 
+func TestHermesManual31OneActualRequestNoOtherModelAndMedium(t *testing.T) {
+	var sent [][]byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		sent = append(sent, b)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, `{"error":{"message":"no capacity available"}}`)
+	}))
+	defer server.Close()
+	payload := []byte(`{"model":"gemini-3.1-flash-lite","messages":[{"role":"user","content":"synthetic"}],"reasoning_effort":"medium"}`)
+	opts := cliproxyexecutor.Options{SourceFormat: sdktranslator.FromString("openai"), OriginalRequest: payload, Metadata: map[string]any{cliproxyexecutor.HermesManualMetadataKey: true, cliproxyexecutor.SinglePickMetadataKey: true}}
+	_, err := NewAntigravityExecutor(&config.Config{RequestRetry: 3}).Execute(context.Background(), antigravityTestAuth(server.URL), cliproxyexecutor.Request{Model: "gemini-3.1-flash-lite", Payload: payload}, opts)
+	if err == nil || len(sent) != 1 {
+		t.Fatal("manual executor retried/switched", len(sent), err)
+	}
+	if gjson.GetBytes(sent[0], "model").String() != "gemini-3.1-flash-lite" {
+		t.Fatal("manual model replaced")
+	}
+	if gjson.GetBytes(sent[0], "request.generationConfig.thinkingConfig.thinkingLevel").String() != "medium" {
+		t.Fatal("manual medium lost")
+	}
+	urls := []string{server.URL, "https://never-contact.invalid"}
+	attempts, selected := antigravityAttemptPlan(nil, &config.Config{RequestRetry: 3}, opts, urls)
+	if attempts != 1 || len(selected) != 1 {
+		t.Fatal("alternate endpoint remains enabled")
+	}
+}
+
+func TestHermesManualGeminiEffortSurvivesDynamicModelAndPayloadRules(t *testing.T) {
+	for _, effort := range []string{"medium", "high", "none"} {
+		payload := []byte(`{"messages":[{"role":"user","content":"synthetic"}],"reasoning_effort":"` + effort + `"}`)
+		opts := cliproxyexecutor.Options{SourceFormat: sdktranslator.FromString("openai"), OriginalRequest: payload, Metadata: map[string]any{cliproxyexecutor.HermesManualMetadataKey: true}}
+		e := NewAntigravityExecutor(nil)
+		ec := e.newAntigravityExecutionContext(context.Background(), nil, cliproxyexecutor.Request{Model: "gemini-3.1-flash-lite", Payload: payload}, opts, false)
+		body, err := e.buildAntigravityPayload(ec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := gjson.GetBytes(body, "request.generationConfig.thinkingConfig.thinkingLevel").String()
+		if effort == "none" {
+			if got != "" {
+				t.Fatal("manual none became thinking")
+			}
+		} else if got != effort {
+			t.Fatal("manual effort changed", effort, got)
+		}
+	}
+}
+
 func TestHermesFallbackLunaMediumAndCompletedToolResultReachCompatUpstream(t *testing.T) {
 	var sent []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

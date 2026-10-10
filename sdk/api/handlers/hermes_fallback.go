@@ -13,7 +13,17 @@ import (
 // It only reduces execution attempts; authentication/channel access is unchanged.
 func configureHermesFallback(meta map[string]any, model string, body []byte) *interfaces.ErrorMessage {
 	requested, _ := meta["hermes_fallback_requested"].(bool)
+	manual, _ := meta["hermes_manual_requested"].(bool)
 	delete(meta, "hermes_fallback_requested")
+	delete(meta, "hermes_manual_requested")
+	if manual {
+		if model == "" || gjson.GetBytes(body, "stream").Bool() {
+			return &interfaces.ErrorMessage{StatusCode: http.StatusBadRequest, Error: fmt.Errorf("Hermes manual mode requires a selected model and non-streaming request")}
+		}
+		meta[coreexecutor.SinglePickMetadataKey] = true
+		meta[coreexecutor.HermesManualMetadataKey] = true
+		return nil
+	}
 	if !requested {
 		return nil
 	}

@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v0.4.6-hermes-fallback.2 (overlay 0.25.11)
+
+- Added authenticated `manual-v1` request policy for Hermes's selected route.
+  Existing single-pick metadata prevents auth/provider failover and internal
+  retries; Antigravity uses one endpoint/attempt. Marked streaming is rejected
+  before execution. Authentication and channel authorization stay unchanged.
+- Preserved manual Gemini/OpenAI effort after payload overrides without
+  substituting another level. Dynamic Gemini thinking metadata no longer
+  strips the explicit manual effort.
+- Added `X-CliRelay-Model-Modes: manual-v1` to authenticated model catalogs.
+  Existing automatic capability/header remain unchanged so staged proxy-first
+  deployment remains compatible with the current Hermes plugin.
+- Handler/executor/auth regression suites passed with local mocks. The actual
+  HTTP manual 3.1 mock returns 503 after exactly one upstream attempt with
+  model and medium preserved. This is local source only; no commit, publication,
+  image replacement, migration, credential change or paid request performed.
+
 ## v0.4.6-hermes-fallback.1 - Hermes bounded fallback (overlay 0.25.10)
 
 - Added authenticated, opt-in `X-Hermes-Fallback-Policy: v1` for the five exact

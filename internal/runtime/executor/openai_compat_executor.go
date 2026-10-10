@@ -96,6 +96,12 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 			return resp, err
 		}
 	}
+	if hermesManualEnabled(opts) {
+		translated, err = applyHermesOpenAIEffort(translated, hermesManualEffort(opts))
+		if err != nil {
+			return resp, err
+		}
+	}
 	if opts.Alt == "responses/compact" {
 		if updated, errDelete := sjson.DeleteBytes(translated, "stream"); errDelete == nil {
 			translated = updated
@@ -108,6 +114,12 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 	}
 	if hermesFallbackEnabled(opts) {
 		translated, err = applyHermesOpenAIMedium(translated)
+		if err != nil {
+			return resp, err
+		}
+	}
+	if hermesManualEnabled(opts) {
+		translated, err = applyHermesOpenAIEffort(translated, hermesManualEffort(opts))
 		if err != nil {
 			return resp, err
 		}

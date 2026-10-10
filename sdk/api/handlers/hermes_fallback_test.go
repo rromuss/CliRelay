@@ -60,3 +60,39 @@ func TestHermesFallbackHeaderEntersExecutionMetadata(t *testing.T) {
 		t.Fatal("missing request marker")
 	}
 }
+
+func TestHermesManualLocksAnySelectedRouteWithoutForcingMedium(t *testing.T) {
+	for _, model := range []string{"gemini-3.1-flash-lite", "mh/gpt-6-sol", "mh-claude/claude-sonnet-5"} {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+		c.Request.Header.Set("X-Hermes-Fallback-Policy", "manual-v1")
+		ctx := context.WithValue(context.Background(), util.ContextKeyGin, c)
+		meta := requestExecutionMetadata(ctx)
+		meta["allowed-channels"] = "synthetic-scope"
+		if err := configureHermesFallback(meta, model, []byte(`{"reasoning_effort":"high","stream":false}`)); err != nil {
+			t.Fatal(err)
+		}
+		if meta[coreexecutor.SinglePickMetadataKey] != true || meta[coreexecutor.HermesManualMetadataKey] != true {
+			t.Fatal("manual lock missing", meta)
+		}
+		if meta[coreexecutor.HermesFallbackMetadataKey] == true || meta["allowed-channels"] != "synthetic-scope" {
+			t.Fatal("automatic reasoning or authorization changed")
+		}
+	}
+}
+
+func TestHermesManualRejectsStreamingBeforeAuthOrExecution(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Request.Header.Set("X-Hermes-Fallback-Policy", "manual-v1")
+	ctx := context.WithValue(context.Background(), util.ContextKeyGin, c)
+	h := &BaseAPIHandler{} // Any auth/execution access would panic.
+	_, _, errs := h.ExecuteStreamWithAuthManager(ctx, "openai", "gemini-3.1-flash-lite", []byte(`{"stream":true}`), "")
+	if err := <-errs; err == nil || err.StatusCode != http.StatusBadRequest {
+		t.Fatal("manual streaming accepted", err)
+	}
+	meta := map[string]any{"hermes_manual_requested": true}
+	if configureHermesFallback(meta, "gemini-3.1-flash-lite", []byte(`{"stream":true}`)) == nil {
+		t.Fatal("invalid manual contract accepted")
+	}
+}

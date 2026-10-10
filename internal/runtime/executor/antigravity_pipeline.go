@@ -30,6 +30,10 @@ func (e *AntigravityExecutor) buildAntigravityPayload(execCtx *ExecutionContext)
 		body = execCtx.ApplyPayloadConfig(body, originalTranslated)
 		return applyHermesGeminiMedium(body)
 	}
+	if hermesManualEnabled(execCtx.Options) {
+		body = execCtx.ApplyPayloadConfig(body, originalTranslated)
+		return applyHermesGeminiEffort(body, hermesManualEffort(execCtx.Options))
+	}
 	body, err := thinking.ApplyThinking(body, execCtx.Request.Model, execCtx.SourceFormat.String(), execCtx.Execution.TargetFormat.String(), e.Identifier())
 	if err != nil {
 		return nil, err

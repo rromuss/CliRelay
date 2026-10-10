@@ -13,6 +13,9 @@ const RequestedModelMetadataKey = "requested_model"
 // HermesFallbackMetadataKey marks validated requests owned by the Hermes retry policy.
 const HermesFallbackMetadataKey = "hermes_fallback_policy"
 
+// HermesManualMetadataKey prevents route failover for a manually selected model.
+const HermesManualMetadataKey = "hermes_manual_policy"
+
 const (
 	// PinnedAuthMetadataKey locks execution to a specific auth ID.
 	PinnedAuthMetadataKey = "pinned_auth_id"
