@@ -244,6 +244,7 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 	routeFallback := ""
 	sessionStickyKey := ""
 	hermesFallbackRequested := false
+	hermesFallbackV2Requested := false
 	hermesManualRequested := false
 	if route := internalrouting.PathRouteContextFromContext(ctx); route != nil {
 		routeGroup = strings.TrimSpace(route.Group)
@@ -253,6 +254,7 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 		if ginCtx, ok := ctx.Value(util.ContextKeyGin).(*gin.Context); ok && ginCtx != nil && ginCtx.Request != nil {
 			key = strings.TrimSpace(ginCtx.GetHeader("Idempotency-Key"))
 			hermesFallbackRequested = ginCtx.GetHeader("X-Hermes-Fallback-Policy") == "v1"
+			hermesFallbackV2Requested = ginCtx.GetHeader("X-Hermes-Fallback-Policy") == "v2"
 			hermesManualRequested = ginCtx.GetHeader("X-Hermes-Fallback-Policy") == "manual-v1"
 			sessionStickyKey = requestSessionStickyHeaderKey(ginCtx)
 			if metadataVal, exists := ginCtx.Get("accessMetadata"); exists {
@@ -286,6 +288,9 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 	meta := map[string]any{idempotencyKeyMetadataKey: key}
 	if hermesFallbackRequested {
 		meta["hermes_fallback_requested"] = true
+	}
+	if hermesFallbackV2Requested {
+		meta["hermes_fallback_v2_requested"] = true
 	}
 	if hermesManualRequested {
 		meta["hermes_manual_requested"] = true
@@ -749,7 +754,7 @@ func (h *BaseAPIHandler) ExecuteCountWithAuthManager(ctx context.Context, handle
 // The returned http.Header carries upstream response headers captured before streaming begins.
 func (h *BaseAPIHandler) ExecuteStreamWithAuthManager(ctx context.Context, handlerType, modelName string, rawJSON []byte, alt string) (<-chan []byte, http.Header, <-chan *interfaces.ErrorMessage) {
 	meta := requestExecutionMetadata(ctx)
-	if meta["hermes_manual_requested"] == true || meta["hermes_fallback_requested"] == true {
+	if meta["hermes_manual_requested"] == true || meta["hermes_fallback_requested"] == true || meta["hermes_fallback_v2_requested"] == true {
 		errChan := make(chan *interfaces.ErrorMessage, 1)
 		errChan <- &interfaces.ErrorMessage{StatusCode: http.StatusBadRequest, Error: fmt.Errorf("Hermes model policy requires non-streaming execution")}
 		close(errChan)

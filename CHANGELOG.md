@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.4.6-hermes-fallback.3 (overlay 0.25.12)
+
+- Added verified automatic v2 model/effort profiles, preserving v1 and manual-v1
+  compatibility. The additive fallback capability leaves old capability values
+  unchanged. Single-pick auth/channel boundaries and one upstream attempt remain.
+- Converted the exact known Antigravity retired Flash notice to 410/model_retired
+  for marked Hermes requests before success publication and translation. Requires
+  retired model family, full notice, zero/missing usage, no modelVersion and only
+  text parts. Flash-Lite, valid model answers, safety/tool responses and ordinary
+  clients retain their behavior; no broad deprecated-keyword matching added.
+- Synthetic handler/executor/auth suites passed, including actual 200 upstream
+  notice → 410 with one request, exact v2 wire model/effort and legacy v1 tests.
+  This release retains the legacy SQLite baseline and does not migrate OAuth/DB.
+
 ## v0.4.6-hermes-fallback.2 (overlay 0.25.11)
 
 - Added authenticated `manual-v1` request policy for Hermes's selected route.

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -37,6 +38,37 @@ func TestHermesFallbackRequiresExactModelsAndMedium(t *testing.T) {
 		if meta[coreexecutor.SinglePickMetadataKey] == true {
 			t.Fatal("rejected contract enabled")
 		}
+	}
+}
+
+func TestHermesV2VerifiedProfilesAndLegacyV1Compatibility(t *testing.T) {
+	for _, model := range []string{"gemini-3.8-flash-tiered", "gemini-3.6-flash-medium", "gemini-3.1-flash-lite", "mh/gpt-6-luna"} {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+		c.Request.Header.Set("X-Hermes-Fallback-Policy", "v2")
+		meta := requestExecutionMetadata(context.WithValue(context.Background(), util.ContextKeyGin, c))
+		meta["allowed-channels"] = "synthetic"
+		if err := configureHermesFallback(meta, model, []byte(`{"reasoning_effort":"medium"}`)); err != nil {
+			t.Fatal(err)
+		}
+		if meta[coreexecutor.HermesFallbackV2MetadataKey] != true || meta[coreexecutor.SinglePickMetadataKey] != true || meta["allowed-channels"] != "synthetic" {
+			t.Fatal("v2 contract missing")
+		}
+	}
+	for _, model := range []string{"gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-3.1-pro-high"} {
+		if configureHermesFallback(map[string]any{"hermes_fallback_v2_requested": true}, model, []byte(`{"reasoning_effort":"medium"}`)) == nil {
+			t.Fatal("unverified v2 route accepted", model)
+		}
+	}
+	if configureHermesFallback(map[string]any{"hermes_fallback_v2_requested": true}, "gemini-3.6-flash-medium", []byte(`{"reasoning_effort":"high"}`)) == nil {
+		t.Fatal("unverified profile accepted")
+	}
+	if err := configureHermesFallback(map[string]any{"hermes_fallback_requested": true}, "gemini-3.6-flash-tiered", []byte(`{"reasoning_effort":"medium"}`)); err != nil {
+		t.Fatal("legacy v1 broken", err)
+	}
+	errBody := BuildErrorResponseBody(http.StatusGone, `{"error":{"type":"model_unavailable","code":"model_retired","message":"retired"}}`)
+	if !bytes.Contains(errBody, []byte(`"code":"model_retired"`)) {
+		t.Fatal("retirement code lost")
 	}
 }
 

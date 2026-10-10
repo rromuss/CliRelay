@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -14,6 +15,78 @@ import (
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v6/sdk/translator"
 	"github.com/tidwall/gjson"
 )
+
+func TestHermesRetirementNoticeIsExactAndDoesNotMisclassifyAnswers(t *testing.T) {
+	body := []byte(`{"response":{"candidates":[{"content":{"parts":[{"text":"` + retiredGeminiFlashNotice + `"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":0,"candidatesTokenCount":0,"totalTokenCount":0}}}`)
+	opts := cliproxyexecutor.Options{Metadata: map[string]any{cliproxyexecutor.HermesManualMetadataKey: true}}
+	if err := hermesAntigravityRetiredError("gemini-3.5-flash-low", body, opts); err == nil {
+		t.Fatal("retirement not detected")
+	}
+	for _, tc := range []struct {
+		model string
+		body  []byte
+		opts  cliproxyexecutor.Options
+	}{
+		{"gemini-3.8-flash-tiered", body, opts},
+		{"gemini-3.5-flash-lite", body, opts},
+		{"gemini-3.5-flash-low", body, cliproxyexecutor.Options{}},
+		{"gemini-3.5-flash-low", bytes.Replace(body, []byte(`"candidatesTokenCount":0`), []byte(`"candidatesTokenCount":8`), 1), opts},
+		{"gemini-3.5-flash-low", bytes.Replace(body, []byte(`"usageMetadata":`), []byte(`"modelVersion":"gemini-3.6-flash","usageMetadata":`), 1), opts},
+		{"gemini-3.5-flash-low", bytes.Replace(body, []byte(`"STOP"`), []byte(`"SAFETY"`), 1), opts},
+		{"gemini-3.5-flash-low", bytes.Replace(body, []byte(retiredGeminiFlashNotice), []byte("An example notice: "+retiredGeminiFlashNotice), 1), opts},
+		{"gemini-3.5-flash-low", []byte(`{"response":{"candidates":[{"content":{"parts":[{"functionCall":{"name":"synthetic","args":{}}}]}}]}}`), opts},
+	} {
+		if err := hermesAntigravityRetiredError(tc.model, tc.body, tc.opts); err != nil {
+			t.Fatal("normal response/client classified as retired", tc.model)
+		}
+	}
+}
+
+func TestHermesRetirementHTTP200Becomes410BeforeTranslationOneAttempt(t *testing.T) {
+	var count atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"response":{"candidates":[{"content":{"parts":[{"text":"`+retiredGeminiFlashNotice+`"}]}}],"usageMetadata":{"totalTokenCount":0}}}`)
+	}))
+	defer server.Close()
+	payload := []byte(`{"model":"gemini-3.5-flash-low","messages":[{"role":"user","content":"synthetic"}],"reasoning_effort":"medium"}`)
+	opts := cliproxyexecutor.Options{SourceFormat: sdktranslator.FromString("openai"), OriginalRequest: payload, Metadata: map[string]any{cliproxyexecutor.HermesManualMetadataKey: true, cliproxyexecutor.SinglePickMetadataKey: true}}
+	resp, err := NewAntigravityExecutor(&config.Config{RequestRetry: 3}).Execute(context.Background(), antigravityTestAuth(server.URL), cliproxyexecutor.Request{Model: "gemini-3.5-flash-low", Payload: payload}, opts)
+	se, ok := err.(interface{ StatusCode() int })
+	if !ok || se.StatusCode() != http.StatusGone {
+		t.Fatal("expected 410", err)
+	}
+	if count.Load() != 1 || len(resp.Payload) != 0 {
+		t.Fatal("notice translated/retried", count.Load())
+	}
+	if gjson.Get(err.Error(), "error.code").String() != "model_retired" {
+		t.Fatal("machine-readable code missing")
+	}
+}
+
+func TestHermesV2TranslatedProfilesPreserveModelEffortAndToolHistory(t *testing.T) {
+	for _, model := range []string{"gemini-3.8-flash-tiered", "gemini-3.6-flash-medium", "gemini-3.1-flash-lite"} {
+		payload := []byte(`{"model":"` + model + `","reasoning_effort":"medium","messages":[{"role":"user","content":"synthetic"},{"role":"assistant","tool_calls":[{"id":"done","type":"function","function":{"name":"synthetic","arguments":"{}"}}]},{"role":"tool","tool_call_id":"done","content":"already done"}]}`)
+		opts := cliproxyexecutor.Options{SourceFormat: sdktranslator.FromString("openai"), OriginalRequest: payload, Metadata: map[string]any{cliproxyexecutor.HermesFallbackMetadataKey: true, cliproxyexecutor.HermesFallbackV2MetadataKey: true}}
+		e := NewAntigravityExecutor(nil)
+		ec := e.newAntigravityExecutionContext(context.Background(), nil, cliproxyexecutor.Request{Model: model, Payload: payload}, opts, false)
+		body, err := e.buildAntigravityPayload(ec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if gjson.GetBytes(body, "request.generationConfig.thinkingConfig.thinkingLevel").String() != "medium" {
+			t.Fatal("v2 effort lost", model)
+		}
+		if !bytes.Contains(body, []byte("already done")) {
+			t.Fatal("completed tool missing")
+		}
+		_, wire, err := e.buildRequest(context.Background(), nil, "synthetic", ec.BaseModel, body, false, "", "http://synthetic.invalid")
+		if err != nil || gjson.GetBytes(wire, "model").String() != model {
+			t.Fatal("upstream model replaced", model, err)
+		}
+	}
+}
 
 func TestHermesFallbackSingleActualUpstreamRequestOnNoCapacity(t *testing.T) {
 	for _, marked := range []bool{false, true} {

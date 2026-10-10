@@ -93,6 +93,7 @@ func rewriteCcSwitchOpenAIRequestModel(rawJSON []byte, c *gin.Context) ([]byte, 
 func (h *OpenAIAPIHandler) OpenAIModels(c *gin.Context) {
 	c.Header("X-CliRelay-Capabilities", "hermes-fallback-v1")
 	c.Header("X-CliRelay-Model-Modes", "manual-v1")
+	c.Header("X-CliRelay-Fallback-Policy", "v2")
 	// Get all available models
 	allModels := h.Models()
 

@@ -91,7 +91,7 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 	translated, originalTranslated := execCtx.TranslateRequestPair(req.Payload)
 	translated = execCtx.ApplyPayloadConfig(translated, originalTranslated)
 	if hermesFallbackEnabled(opts) {
-		translated, err = applyHermesOpenAIMedium(translated)
+		translated, err = applyHermesOpenAIEffort(translated, hermesFallbackEffort(opts))
 		if err != nil {
 			return resp, err
 		}
@@ -113,7 +113,7 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 		return resp, err
 	}
 	if hermesFallbackEnabled(opts) {
-		translated, err = applyHermesOpenAIMedium(translated)
+		translated, err = applyHermesOpenAIEffort(translated, hermesFallbackEffort(opts))
 		if err != nil {
 			return resp, err
 		}

@@ -28,7 +28,7 @@ func (e *AntigravityExecutor) buildAntigravityPayload(execCtx *ExecutionContext)
 	body, originalTranslated := execCtx.TranslateRequestPair(execCtx.Request.Payload)
 	if hermesFallbackEnabled(execCtx.Options) {
 		body = execCtx.ApplyPayloadConfig(body, originalTranslated)
-		return applyHermesGeminiMedium(body)
+		return applyHermesGeminiEffort(body, hermesFallbackEffort(execCtx.Options))
 	}
 	if hermesManualEnabled(execCtx.Options) {
 		body = execCtx.ApplyPayloadConfig(body, originalTranslated)

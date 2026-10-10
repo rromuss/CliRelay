@@ -13,8 +13,10 @@ import (
 // It only reduces execution attempts; authentication/channel access is unchanged.
 func configureHermesFallback(meta map[string]any, model string, body []byte) *interfaces.ErrorMessage {
 	requested, _ := meta["hermes_fallback_requested"].(bool)
+	v2, _ := meta["hermes_fallback_v2_requested"].(bool)
 	manual, _ := meta["hermes_manual_requested"].(bool)
 	delete(meta, "hermes_fallback_requested")
+	delete(meta, "hermes_fallback_v2_requested")
 	delete(meta, "hermes_manual_requested")
 	if manual {
 		if model == "" || gjson.GetBytes(body, "stream").Bool() {
@@ -22,6 +24,22 @@ func configureHermesFallback(meta map[string]any, model string, body []byte) *in
 		}
 		meta[coreexecutor.SinglePickMetadataKey] = true
 		meta[coreexecutor.HermesManualMetadataKey] = true
+		return nil
+	}
+	if v2 {
+		profiles := map[string]string{
+			"gemini-3.8-flash-tiered": "medium",
+			"gemini-3.6-flash-medium": "medium",
+			"gemini-3.1-flash-lite":   "medium",
+			"mh/gpt-6-luna":           "medium",
+		}
+		effort, ok := profiles[model]
+		if !ok || gjson.GetBytes(body, "reasoning_effort").String() != effort || gjson.GetBytes(body, "stream").Bool() {
+			return &interfaces.ErrorMessage{StatusCode: http.StatusBadRequest, Error: fmt.Errorf("Hermes v2 requires a verified model/effort profile and non-streaming request")}
+		}
+		meta[coreexecutor.SinglePickMetadataKey] = true
+		meta[coreexecutor.HermesFallbackMetadataKey] = true
+		meta[coreexecutor.HermesFallbackV2MetadataKey] = true
 		return nil
 	}
 	if !requested {

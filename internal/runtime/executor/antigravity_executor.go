@@ -199,6 +199,10 @@ attemptLoop:
 				return resp, err
 			}
 
+			if retiredErr := hermesAntigravityRetiredError(execCtx.BaseModel, bodyBytes, opts); retiredErr != nil {
+				err = retiredErr
+				return resp, err
+			}
 			reporter.publishWithContent(execCtx.Context, parseAntigravityUsage(bodyBytes), string(req.Payload), string(bodyBytes))
 			var param any
 			converted := sdktranslator.TranslateNonStream(execCtx.Context, execCtx.Execution.TargetFormat, execCtx.SourceFormat, req.Model, execCtx.OriginalPayload, translated, bodyBytes, &param)
