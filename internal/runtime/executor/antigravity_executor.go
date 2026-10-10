@@ -115,7 +115,7 @@ func (e *AntigravityExecutor) Execute(ctx context.Context, auth *cliproxyauth.Au
 	httpClient := execCtx.HTTPClient(0)
 	recorder := execCtx.Recorder()
 
-	attempts := antigravityRetryAttempts(auth, e.cfg)
+	attempts, baseURLs := antigravityAttemptPlan(auth, e.cfg, opts, baseURLs)
 
 attemptLoop:
 	for attempt := 0; attempt < attempts; attempt++ {
@@ -257,7 +257,7 @@ func (e *AntigravityExecutor) ExecuteStream(ctx context.Context, auth *cliproxya
 	httpClient := execCtx.HTTPClient(0)
 	recorder := execCtx.Recorder()
 
-	attempts := antigravityRetryAttempts(auth, e.cfg)
+	attempts, baseURLs := antigravityAttemptPlan(auth, e.cfg, opts, baseURLs)
 
 attemptLoop:
 	for attempt := 0; attempt < attempts; attempt++ {

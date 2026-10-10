@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## v0.4.6-hermes-fallback.1 - Hermes bounded fallback (overlay 0.25.10)
+
+- Added authenticated, opt-in `X-Hermes-Fallback-Policy: v1` for the five exact
+  Hermes routes. Marked non-streaming requests require explicit `medium` and
+  use existing single-pick auth metadata without changing channel access.
+- Disabled executor retries and alternate Antigravity endpoints only for marked
+  requests. Ordinary clients retain their current retry behavior.
+- Preserved native Gemini `thinkingLevel: medium` after payload rules for the
+  selected dynamically registered routes, whose legacy Thinking metadata is
+  absent. Conflicting budgets are removed only for this explicit contract.
+- Advertised `hermes-fallback-v1` in the authenticated model-catalog response.
+  Hermes fails closed on proxies without the capability.
+- Full affected handler/executor/auth regression suites passed; actual HTTP
+  mocks confirmed a single marked upstream attempt and preserved Luna medium
+  plus completed tool history. A local Linux AMD64 build passed (Go 1.27.2,
+  CGO disabled). Release retains the v0.4.6 SQLite runtime and existing panel;
+  it requires a pinned binary/image and private rollback backup. No credential
+  change, migration or paid generation request is needed for deployment.
+
 ## v0.4.6 - OAuth Identity Fingerprints and Updater Diagnostics - 2026-06-25
 
 ### Highlights

@@ -26,6 +26,10 @@ func (e *AntigravityExecutor) newAntigravityExecutionContext(
 
 func (e *AntigravityExecutor) buildAntigravityPayload(execCtx *ExecutionContext) ([]byte, error) {
 	body, originalTranslated := execCtx.TranslateRequestPair(execCtx.Request.Payload)
+	if hermesFallbackEnabled(execCtx.Options) {
+		body = execCtx.ApplyPayloadConfig(body, originalTranslated)
+		return applyHermesGeminiMedium(body)
+	}
 	body, err := thinking.ApplyThinking(body, execCtx.Request.Model, execCtx.SourceFormat.String(), execCtx.Execution.TargetFormat.String(), e.Identifier())
 	if err != nil {
 		return nil, err

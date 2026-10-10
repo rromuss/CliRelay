@@ -43,7 +43,7 @@ func (e *AntigravityExecutor) executeClaudeNonStream(ctx context.Context, auth *
 	httpClient := execCtx.HTTPClient(0)
 	recorder := execCtx.Recorder()
 
-	attempts := antigravityRetryAttempts(auth, e.cfg)
+	attempts, baseURLs := antigravityAttemptPlan(auth, e.cfg, opts, baseURLs)
 
 attemptLoop:
 	for attempt := 0; attempt < attempts; attempt++ {

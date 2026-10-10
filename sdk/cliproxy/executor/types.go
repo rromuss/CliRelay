@@ -10,6 +10,9 @@ import (
 // RequestedModelMetadataKey stores the client-requested model name in Options.Metadata.
 const RequestedModelMetadataKey = "requested_model"
 
+// HermesFallbackMetadataKey marks validated requests owned by the Hermes retry policy.
+const HermesFallbackMetadataKey = "hermes_fallback_policy"
+
 const (
 	// PinnedAuthMetadataKey locks execution to a specific auth ID.
 	PinnedAuthMetadataKey = "pinned_auth_id"

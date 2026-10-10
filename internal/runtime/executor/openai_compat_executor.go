@@ -90,6 +90,12 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 
 	translated, originalTranslated := execCtx.TranslateRequestPair(req.Payload)
 	translated = execCtx.ApplyPayloadConfig(translated, originalTranslated)
+	if hermesFallbackEnabled(opts) {
+		translated, err = applyHermesOpenAIMedium(translated)
+		if err != nil {
+			return resp, err
+		}
+	}
 	if opts.Alt == "responses/compact" {
 		if updated, errDelete := sjson.DeleteBytes(translated, "stream"); errDelete == nil {
 			translated = updated
@@ -99,6 +105,12 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 	translated, err = thinking.ApplyThinking(translated, req.Model, execCtx.SourceFormat.String(), to.String(), e.Identifier())
 	if err != nil {
 		return resp, err
+	}
+	if hermesFallbackEnabled(opts) {
+		translated, err = applyHermesOpenAIMedium(translated)
+		if err != nil {
+			return resp, err
+		}
 	}
 	if shouldNormalizeKimiCompatPayload(execCtx.BaseModel) {
 		translated, err = normalizeKimiToolMessageLinks(translated)

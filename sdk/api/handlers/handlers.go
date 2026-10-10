@@ -243,6 +243,7 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 	routeGroup := ""
 	routeFallback := ""
 	sessionStickyKey := ""
+	hermesFallbackRequested := false
 	if route := internalrouting.PathRouteContextFromContext(ctx); route != nil {
 		routeGroup = strings.TrimSpace(route.Group)
 		routeFallback = strings.TrimSpace(route.Fallback)
@@ -250,6 +251,7 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 	if ctx != nil {
 		if ginCtx, ok := ctx.Value(util.ContextKeyGin).(*gin.Context); ok && ginCtx != nil && ginCtx.Request != nil {
 			key = strings.TrimSpace(ginCtx.GetHeader("Idempotency-Key"))
+			hermesFallbackRequested = ginCtx.GetHeader("X-Hermes-Fallback-Policy") == "v1"
 			sessionStickyKey = requestSessionStickyHeaderKey(ginCtx)
 			if metadataVal, exists := ginCtx.Get("accessMetadata"); exists {
 				if metadata, okMeta := metadataVal.(map[string]string); okMeta {
@@ -280,6 +282,9 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 	}
 
 	meta := map[string]any{idempotencyKeyMetadataKey: key}
+	if hermesFallbackRequested {
+		meta["hermes_fallback_requested"] = true
+	}
 	if allowedChannels != "" {
 		meta["allowed-channels"] = allowedChannels
 	}
@@ -643,6 +648,9 @@ func (h *BaseAPIHandler) ExecuteWithAuthManager(ctx context.Context, handlerType
 		return nil, nil, errMsg
 	}
 	reqMeta := requestExecutionMetadata(ctx)
+	if policyError := configureHermesFallback(reqMeta, modelName, rawJSON); policyError != nil {
+		return nil, nil, policyError
+	}
 	reqMeta[coreexecutor.RequestedModelMetadataKey] = normalizedModel
 	payload := rawJSON
 	if len(payload) == 0 {
