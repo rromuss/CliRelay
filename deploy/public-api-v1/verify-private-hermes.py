@@ -4,6 +4,7 @@
 Outputs metadata/booleans only; no key, prompt, response, config or user data.
 """
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -35,7 +36,8 @@ if __name__ == "__main__":
         raise SystemExit("private Hermes probe failed; raw output suppressed")
     records = [json.loads(line) for line in result.stdout.splitlines()]
     # Fingerprints are kept server-side for comparison, not displayed.
-    directory = Path(Path("/root/clirelay-public-v1-backups/current").read_text())
+    current = os.environ.get("CLIRELAY_VERIFY_BACKUP_CURRENT_FILE", "/root/clirelay-public-v1-backups/current")
+    directory = Path(Path(current).read_text())
     baseline = directory / "private-hermes-baseline.json"
     result = {k: v for record in records for k, v in record.items()}
     if sys.argv[1] == "--baseline":
