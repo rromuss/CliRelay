@@ -95,6 +95,8 @@ type StreamingConfig struct {
 
 // APIKeyEntry represents an API key with optional metadata for advanced management.
 type APIKeyEntry struct {
+	// ExternalAccess is opt-in and never inherited from a permission profile.
+	ExternalAccess bool `yaml:"external-access,omitempty" json:"external-access"`
 	// ID is the stable identity of this logical API key entry.
 	// It is API-managed only and is not persisted back into YAML.
 	ID string `yaml:"-" json:"id,omitempty"`

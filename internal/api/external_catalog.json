@@ -1,0 +1,56 @@
+{
+  "models": [
+    {
+      "slug": "gemini-3.8-flash-tiered",
+      "display_name": "Gemini 3.8 Flash · Antigravity",
+      "description": "Private CliRelay Antigravity route; qualified over HTTP Responses.",
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "medium",
+          "description": "Medium reasoning"
+        }
+      ],
+      "shell_type": "unified_exec",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 2,
+      "additional_speed_tiers": [],
+      "service_tiers": [],
+      "availability_nux": null,
+      "upgrade": null,
+      "model_messages": null,
+      "include_skills_usage_instructions": true,
+      "include_plugin_usage_instructions": false,
+      "include_apps_usage_instructions": false,
+      "default_reasoning_summary": "none",
+      "support_verbosity": false,
+      "default_verbosity": null,
+      "apply_patch_tool_type": "freeform",
+      "web_search_tool_type": "text_and_image",
+      "truncation_policy": {
+        "mode": "tokens",
+        "limit": 10000
+      },
+      "supports_image_detail_original": false,
+      "context_window": 128000,
+      "max_context_window": 128000,
+      "comp_hash": "",
+      "effective_context_window_percent": 90,
+      "experimental_supported_tools": [],
+      "input_modalities": [
+        "text"
+      ],
+      "supports_search_tool": false,
+      "supports_experimental_context": false,
+      "use_responses_lite": false,
+      "supports_reasoning_effort_updates": false,
+      "node_repl_auto_review_required": false,
+      "node_repl_disabled": false,
+      "tool_mode": null,
+      "multi_agent_version": null,
+      "multi_agent_reasoning_effort": "medium",
+      "base_instructions": "You are a helpful AI coding assistant. Follow the user and developer instructions. Use the available local tools to inspect, edit and verify the project. Preserve user changes and report verification honestly."
+    }
+  ]
+}

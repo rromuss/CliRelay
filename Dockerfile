@@ -2,8 +2,8 @@
 FROM --platform=$BUILDPLATFORM alpine:3.22.0 AS frontend-source
 
 ARG FRONTEND_REPOSITORY=https://github.com/rromuss/codeProxy.git
-ARG FRONTEND_REF=hermes-stable
-ARG FRONTEND_COMMIT=d1e963d31b785986d355f85ccdf891ad8dcfc7f8
+ARG FRONTEND_REF=codex/public-api-v1
+ARG FRONTEND_COMMIT=c1da39079aca34a1889e937199955e156d4ee859
 
 RUN apk add --no-cache git ca-certificates
 
@@ -28,8 +28,8 @@ WORKDIR /frontend
 COPY --from=frontend-source /src/frontend/ .
 ARG UI_VERSION=dev
 ARG FRONTEND_REPOSITORY=https://github.com/rromuss/codeProxy.git
-ARG FRONTEND_REF=hermes-stable
-ARG FRONTEND_COMMIT=d1e963d31b785986d355f85ccdf891ad8dcfc7f8
+ARG FRONTEND_REF=codex/public-api-v1
+ARG FRONTEND_COMMIT=c1da39079aca34a1889e937199955e156d4ee859
 ARG BUILD_DATE=unknown
 ENV VITE_APP_VERSION=${UI_VERSION}
 ENV VITE_PANEL_REPOSITORY=${FRONTEND_REPOSITORY}
@@ -55,8 +55,8 @@ ARG VERSION=dev
 ARG COMMIT=none
 ARG BUILD_DATE=unknown
 ARG UI_VERSION=dev
-ARG FRONTEND_REF=hermes-stable
-ARG FRONTEND_COMMIT=d1e963d31b785986d355f85ccdf891ad8dcfc7f8
+ARG FRONTEND_REF=codex/public-api-v1
+ARG FRONTEND_COMMIT=c1da39079aca34a1889e937199955e156d4ee859
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
   -ldflags="-s -w \

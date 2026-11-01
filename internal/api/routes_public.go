@@ -24,6 +24,7 @@ func (s *Server) setupRoutes() {
 	claudeCodeHandlers := claude.NewClaudeCodeAPIHandler(s.handlers)
 	openaiResponsesHandlers := openai.NewOpenAIResponsesAPIHandler(s.handlers)
 	openaiImagesHandlers := openai.NewOpenAIImagesAPIHandler(s.handlers)
+	s.setupExternalRoutes(openaiResponsesHandlers.Responses)
 
 	registerV1Routes := func(group *gin.RouterGroup) {
 		group.GET("/models", s.unifiedModelsHandler(openaiHandlers, claudeCodeHandlers))

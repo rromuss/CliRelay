@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/zstd"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/api/bodyutil"
+	"github.com/router-for-me/CLIProxyAPI/v6/internal/publicapi"
 )
 
 type decompressedReadCloser struct {
@@ -38,6 +39,9 @@ func DecompressRequestMiddleware() gin.HandlerFunc {
 		}
 
 		limit := bodyutil.ModelRequestBodyLimit()
+		if publicapi.IsExternal(c.Request.Context()) {
+			limit = publicapi.BodyLimit
+		}
 		origBody := c.Request.Body
 		rawBody := http.MaxBytesReader(c.Writer, origBody, limit)
 		br := bufio.NewReader(rawBody)

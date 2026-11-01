@@ -1,0 +1,22 @@
+# Merge as a dedicated client profile. Never overwrite existing providers/auth.
+# Store the API key in macOS Keychain, service CliRelay:cliprelay.romus.pro:8443,
+# account codex-laptop. Enter it interactively; never pass it in shell arguments.
+model = "gemini-3.8-flash-tiered"
+model_provider = "clirelay-antigravity"
+model_reasoning_effort = "medium"
+web_search = "disabled"
+
+[model_providers.clirelay-antigravity]
+name = "CliRelay Antigravity"
+base_url = "https://cliprelay.romus.pro:8443/v1"
+model_catalog_url = "https://cliprelay.romus.pro:8443/codex/models"
+wire_api = "responses"
+supports_websockets = false
+request_max_retries = 0
+stream_max_retries = 0
+
+[model_providers.clirelay-antigravity.auth]
+command = "/usr/bin/security"
+args = ["find-generic-password", "-s", "CliRelay:cliprelay.romus.pro:8443", "-a", "codex-laptop", "-w"]
+timeout_ms = 30000
+refresh_interval_ms = 300000

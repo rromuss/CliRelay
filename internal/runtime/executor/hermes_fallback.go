@@ -87,7 +87,8 @@ func hermesManualEffort(opts cliproxyexecutor.Options) string {
 }
 
 func antigravityAttemptPlan(auth *cliproxyauth.Auth, cfg *config.Config, opts cliproxyexecutor.Options, urls []string) (int, []string) {
-	if hermesFallbackEnabled(opts) || hermesManualEnabled(opts) {
+	external, _ := opts.Metadata["external_api"].(bool)
+	if external || hermesFallbackEnabled(opts) || hermesManualEnabled(opts) {
 		if len(urls) > 1 {
 			urls = urls[:1]
 		}

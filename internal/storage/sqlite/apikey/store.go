@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
   allowed_channel_groups TEXT NOT NULL DEFAULT '[]',
   system_prompt     TEXT NOT NULL DEFAULT '',
   created_at        TEXT NOT NULL DEFAULT '',
-  updated_at        TEXT NOT NULL DEFAULT ''
+  updated_at        TEXT NOT NULL DEFAULT '',
+  external_access   INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_id ON api_keys(id);
@@ -38,6 +39,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key);
 `
 
 type APIKeyRow struct {
+	ExternalAccess       bool     `json:"external-access"`
 	ID                   string   `json:"id,omitempty"`
 	Key                  string   `json:"key"`
 	Name                 string   `json:"name,omitempty"`
@@ -90,6 +92,7 @@ func InitTable(db *sql.DB) {
 		log.Errorf("sqlite/apikey: create api_keys table: %v", err)
 	}
 	migrateColumns(db)
+	initExternalUsage(db)
 	backfillIDs(db)
 	backfillNames(db)
 }
@@ -103,6 +106,7 @@ func BackfillNames(db *sql.DB) {
 
 func (r APIKeyRow) ToConfigEntry() config.APIKeyEntry {
 	return config.APIKeyEntry{
+		ExternalAccess:       r.ExternalAccess,
 		ID:                   r.ID,
 		Key:                  r.Key,
 		Name:                 r.Name,
@@ -124,6 +128,7 @@ func (r APIKeyRow) ToConfigEntry() config.APIKeyEntry {
 
 func APIKeyRowFromConfig(entry config.APIKeyEntry) APIKeyRow {
 	return APIKeyRow{
+		ExternalAccess:       entry.ExternalAccess,
 		ID:                   entry.ID,
 		Key:                  entry.Key,
 		Name:                 entry.Name,
@@ -174,7 +179,7 @@ func (s Store) List() []APIKeyRow {
 
 	rows, err := s.db.Query(`SELECT key, name, disabled, id, daily_limit, total_quota,
 		permission_profile_id, spending_limit, concurrency_limit, rpm_limit, tpm_limit,
-		allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at
+		allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at, external_access
 		FROM api_keys ORDER BY created_at ASC`)
 	if err != nil {
 		log.Errorf("sqlite/apikey: list api_keys: %v", err)
@@ -197,7 +202,7 @@ func (s Store) Get(key string) *APIKeyRow {
 
 	row := s.db.QueryRow(`SELECT key, name, disabled, id, daily_limit, total_quota,
 		permission_profile_id, spending_limit, concurrency_limit, rpm_limit, tpm_limit,
-		allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at
+		allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at, external_access
 		FROM api_keys WHERE key = ?`, trimmed)
 	entry, ok := scanAPIKeyRow(row)
 	if !ok {
@@ -218,7 +223,7 @@ func (s Store) GetByID(id string) *APIKeyRow {
 
 	row := s.db.QueryRow(`SELECT key, name, disabled, id, daily_limit, total_quota,
 		permission_profile_id, spending_limit, concurrency_limit, rpm_limit, tpm_limit,
-		allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at
+		allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at, external_access
 		FROM api_keys WHERE id = ?`, trimmed)
 	entry, ok := scanAPIKeyRow(row)
 	if !ok {
@@ -256,8 +261,8 @@ func (s Store) Upsert(entry APIKeyRow) error {
 
 	_, err := s.db.Exec(`INSERT INTO api_keys
 		(key, id, name, disabled, permission_profile_id, daily_limit, total_quota, spending_limit,
-		 concurrency_limit, rpm_limit, tpm_limit, allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 concurrency_limit, rpm_limit, tpm_limit, allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at, external_access)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(key) DO UPDATE SET
 			id=excluded.id,
 			name=excluded.name, disabled=excluded.disabled,
@@ -268,13 +273,13 @@ func (s Store) Upsert(entry APIKeyRow) error {
 			allowed_models=excluded.allowed_models, allowed_channels=excluded.allowed_channels,
 			allowed_channel_groups=excluded.allowed_channel_groups,
 			system_prompt=excluded.system_prompt,
-			updated_at=excluded.updated_at`,
+			updated_at=excluded.updated_at, external_access=excluded.external_access`,
 		entry.Key, entry.ID, entry.Name, disabledInt, entry.PermissionProfileID,
 		entry.DailyLimit, entry.TotalQuota, entry.SpendingLimit,
 		entry.ConcurrencyLimit, entry.RPMLimit, entry.TPMLimit,
 		mustJSONStringList(entry.AllowedModels), mustJSONStringList(entry.AllowedChannels),
 		mustJSONStringList(entry.AllowedChannelGroups), entry.SystemPrompt,
-		entry.CreatedAt, now,
+		entry.CreatedAt, now, entry.ExternalAccess,
 	)
 	return err
 }
@@ -310,13 +315,13 @@ func (s Store) UpdateByID(entry APIKeyRow) error {
 		key = ?, name = ?, disabled = ?, permission_profile_id = ?, daily_limit = ?, total_quota = ?,
 		spending_limit = ?, concurrency_limit = ?, rpm_limit = ?, tpm_limit = ?,
 		allowed_models = ?, allowed_channels = ?, allowed_channel_groups = ?, system_prompt = ?,
-		created_at = ?, updated_at = ?
+		created_at = ?, updated_at = ?, external_access = ?
 		WHERE id = ?`,
 		entry.Key, entry.Name, disabledInt, entry.PermissionProfileID, entry.DailyLimit, entry.TotalQuota,
 		entry.SpendingLimit, entry.ConcurrencyLimit, entry.RPMLimit, entry.TPMLimit,
 		mustJSONStringList(entry.AllowedModels), mustJSONStringList(entry.AllowedChannels),
 		mustJSONStringList(entry.AllowedChannelGroups), entry.SystemPrompt,
-		entry.CreatedAt, now, entry.ID,
+		entry.CreatedAt, now, entry.ExternalAccess, entry.ID,
 	)
 	return err
 }
@@ -371,8 +376,8 @@ func (s Store) ReplaceAll(entries []APIKeyRow) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO api_keys
 		(key, id, name, disabled, permission_profile_id, daily_limit, total_quota, spending_limit,
-		 concurrency_limit, rpm_limit, tpm_limit, allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		 concurrency_limit, rpm_limit, tpm_limit, allowed_models, allowed_channels, allowed_channel_groups, system_prompt, created_at, updated_at, external_access)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		_ = tx.Rollback()
 		return err
@@ -405,7 +410,7 @@ func (s Store) ReplaceAll(entries []APIKeyRow) error {
 			entry.ConcurrencyLimit, entry.RPMLimit, entry.TPMLimit,
 			mustJSONStringList(entry.AllowedModels), mustJSONStringList(entry.AllowedChannels),
 			mustJSONStringList(entry.AllowedChannelGroups), entry.SystemPrompt,
-			entry.CreatedAt, now,
+			entry.CreatedAt, now, entry.ExternalAccess,
 		); err != nil {
 			_ = tx.Rollback()
 			return err
@@ -463,6 +468,7 @@ func migrateColumns(db *sql.DB) {
 		name       string
 		definition string
 	}{
+		{name: "external_access", definition: "INTEGER NOT NULL DEFAULT 0"},
 		{name: "id", definition: "TEXT NOT NULL DEFAULT ''"},
 		{name: "permission_profile_id", definition: "TEXT NOT NULL DEFAULT ''"},
 		{name: "allowed_channels", definition: "TEXT NOT NULL DEFAULT '[]'"},
@@ -627,7 +633,7 @@ func scanAPIKeyRow(row scanner) (*APIKeyRow, bool) {
 		&entry.DailyLimit, &entry.TotalQuota, &entry.PermissionProfileID, &entry.SpendingLimit,
 		&entry.ConcurrencyLimit, &entry.RPMLimit, &entry.TPMLimit,
 		&modelsJSON, &channelsJSON, &channelGroupsJSON, &entry.SystemPrompt,
-		&entry.CreatedAt, &entry.UpdatedAt,
+		&entry.CreatedAt, &entry.UpdatedAt, &entry.ExternalAccess,
 	); err != nil {
 		if err != sql.ErrNoRows {
 			log.Warnf("sqlite/apikey: scan api_keys row: %v", err)

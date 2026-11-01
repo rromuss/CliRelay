@@ -2,6 +2,7 @@ package responses
 
 import (
 	"context"
+	"github.com/router-for-me/CLIProxyAPI/v6/internal/publicapi"
 
 	. "github.com/router-for-me/CLIProxyAPI/v6/internal/translator/gemini/openai/responses"
 	"github.com/tidwall/gjson"
@@ -12,7 +13,11 @@ func ConvertAntigravityResponseToOpenAIResponses(ctx context.Context, modelName 
 	if responseResult.Exists() {
 		rawJSON = []byte(responseResult.Raw)
 	}
-	return ConvertGeminiResponseToOpenAIResponses(ctx, modelName, originalRequestRawJSON, requestRawJSON, rawJSON, param)
+	events := ConvertGeminiResponseToOpenAIResponses(ctx, modelName, originalRequestRawJSON, requestRawJSON, rawJSON, param)
+	if session := publicapi.FromContext(ctx); session != nil {
+		return session.RestoreSSE(events)
+	}
+	return events
 }
 
 func ConvertAntigravityResponseToOpenAIResponsesNonStream(ctx context.Context, modelName string, originalRequestRawJSON, requestRawJSON, rawJSON []byte, param *any) string {
@@ -31,5 +36,9 @@ func ConvertAntigravityResponseToOpenAIResponsesNonStream(ctx context.Context, m
 		requestRawJSON = []byte(requestResult.Raw)
 	}
 
-	return ConvertGeminiResponseToOpenAIResponsesNonStream(ctx, modelName, originalRequestRawJSON, requestRawJSON, rawJSON, param)
+	body := ConvertGeminiResponseToOpenAIResponsesNonStream(ctx, modelName, originalRequestRawJSON, requestRawJSON, rawJSON, param)
+	if session := publicapi.FromContext(ctx); session != nil {
+		return session.RestoreJSON(body)
+	}
+	return body
 }

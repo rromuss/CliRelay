@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/router-for-me/CLIProxyAPI/v6/internal/publicapi"
 	"net/http"
 	"strings"
 	"time"
@@ -38,6 +39,9 @@ func apiKeyFromContext(ctx context.Context) string {
 }
 
 func buildRequestDetailContent(ctx context.Context) string {
+	if publicapi.IsExternal(ctx) {
+		return ""
+	}
 	if ctx == nil {
 		return ""
 	}

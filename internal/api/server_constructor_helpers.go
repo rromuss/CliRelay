@@ -52,6 +52,7 @@ func newServerEngine(cfg *config.Config, optionState *serverOptionConfig) *gin.E
 		optionState.engineConfigurator(engine)
 	}
 
+	engine.Use(externalBoundary())
 	engine.Use(logging.GinLogrusLogger())
 	engine.Use(logging.GinLogrusRecovery())
 	engine.Use(middleware.DecompressRequestMiddleware())

@@ -1,0 +1,40 @@
+# Add this site block to the existing Caddyfile; never replace existing sites.
+# Connect only Caddy and CliRelay to the dedicated clirelay-public-ingress network.
+https://cliprelay.romus.pro:8443 {
+	tls {
+		issuer acme {
+			disable_tlsalpn_challenge
+		}
+	}
+	@models {
+		method GET
+		path /v1/models
+	}
+	handle @models {
+		rewrite * /external/v1/models
+		reverse_proxy clirelay-public-backend:8317
+	}
+	@responses {
+		method POST
+		path /v1/responses
+	}
+	handle @responses {
+		rewrite * /external/v1/responses
+		reverse_proxy clirelay-public-backend:8317 {
+			stream_timeout 120s
+			header_up -Cookie
+			header_up -X-Management-Key
+		}
+	}
+	@catalog {
+		method GET
+		path /codex/models
+	}
+	handle @catalog {
+		rewrite * /external/codex/models
+		reverse_proxy clirelay-public-backend:8317
+	}
+	handle {
+		respond 404
+	}
+}

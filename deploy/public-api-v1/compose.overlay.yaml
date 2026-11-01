@@ -1,0 +1,13 @@
+# Append to the exact existing effective CliRelay Compose file set, not to an
+# upstream default config. Existing loopback ports and private networks stay.
+services:
+  cli-proxy-api:
+    image: clirelay-hermes:public-v1-${PUBLIC_API_REVISION:?pin the verified backend revision}
+    pull_policy: never
+    networks:
+      public-ingress:
+        aliases: [clirelay-public-backend]
+networks:
+  public-ingress:
+    external: true
+    name: clirelay-public-ingress

@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v0.4.6-public-api.1 — ограниченный внешний Codex API
+
+- Добавлен отдельный `/external` ingress: закрытый по умолчанию opt-in ключа,
+  Bearer auth, явные модели/каналы и положительные RPM/day/concurrency limits.
+  Суточный счётчик атомарный, persisted и привязан к ID ключа; смена значения
+  ключа и рестарт не сбрасывают лимит. Общий внешний пул — два запроса.
+- Публичный контракт ограничен HTTP/SSE Responses, каталогом моделей и
+  проверенным каталогом Codex 0.166.0. Локальные custom/namespace tools и
+  история преобразуются на отдельной границе; приватные Hermes API сохраняются.
+- Внешние payload/headers/cookies исключены из подробного логирования;
+  metadata использует ID вместо credential. Добавлены 8 MiB и 120 s границы.
+- Подготовлены Caddy/Compose/client примеры, закрытый backup/recovery и
+  отдельная проверка старого Hermes. Полный Go suite прошёл; реальный Codex
+  0.166.0 выполнил read/patch/read и продолжение диалога через private bridge.
+  Эта запись описывает исходники; факт deploy фиксируется отдельно.
+
 ## v0.4.6-hermes-fallback.3 (overlay 0.25.12)
 
 - Added verified automatic v2 model/effort profiles, preserving v1 and manual-v1

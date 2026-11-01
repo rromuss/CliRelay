@@ -114,6 +114,9 @@
         "github.com/router-for-me/CLIProxyAPI/v6/internal/auth/qwen",
         "github.com/router-for-me/CLIProxyAPI/v6/internal/browser",
         "github.com/router-for-me/CLIProxyAPI/v6/internal/config"
+      ],
+      "sdk/api/handlers/hermes_fallback.go": [
+        "github.com/router-for-me/CLIProxyAPI/v6/internal/interfaces"
       ]
     }
   },

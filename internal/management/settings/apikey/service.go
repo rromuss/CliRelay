@@ -35,6 +35,7 @@ type Service struct {
 }
 
 type EntryPatch struct {
+	ExternalAccess       *bool     `json:"external-access"`
 	Key                  *string   `json:"key"`
 	Name                 *string   `json:"name"`
 	PermissionProfileID  *string   `json:"permission-profile-id"`
@@ -265,6 +266,9 @@ func (s *Service) PatchEntry(id *string, index *int, match *string, patch EntryP
 		return ErrItemNotFound
 	}
 	entry := *existing
+	if patch.ExternalAccess != nil {
+		entry.ExternalAccess = *patch.ExternalAccess
+	}
 	originalKey := strings.TrimSpace(entry.Key)
 	originalID := strings.TrimSpace(entry.ID)
 

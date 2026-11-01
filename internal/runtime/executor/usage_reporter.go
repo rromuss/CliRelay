@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/router-for-me/CLIProxyAPI/v6/internal/publicapi"
 	"os"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ import (
 const usageReporterOutputMemoryLimit = 256 * 1024
 
 type usageReporter struct {
+	metadataOnly  bool
 	provider      string
 	model         string
 	authID        string
@@ -43,11 +45,12 @@ type usageReporter struct {
 func newUsageReporter(ctx context.Context, provider, model string, auth *cliproxyauth.Auth) *usageReporter {
 	apiKey := apiKeyFromContext(ctx)
 	reporter := &usageReporter{
-		provider:    provider,
-		model:       model,
-		requestedAt: time.Now(),
-		apiKey:      apiKey,
-		source:      resolveUsageSource(auth, apiKey),
+		metadataOnly: publicapi.IsExternal(ctx),
+		provider:     provider,
+		model:        model,
+		requestedAt:  time.Now(),
+		apiKey:       apiKey,
+		source:       resolveUsageSource(auth, apiKey),
 	}
 	if identity := internalusage.ResolveAPIKeyIdentity(apiKey); identity != nil {
 		reporter.apiKeyID = identity.ID
@@ -60,6 +63,9 @@ func newUsageReporter(ctx context.Context, provider, model string, auth *cliprox
 			reporter.authSubjectID = identity.ID
 		}
 		reporter.channelName = strings.TrimSpace(auth.ChannelName())
+	}
+	if reporter.metadataOnly {
+		reporter.apiKey = "external-key:" + reporter.apiKeyID
 	}
 	return reporter
 }
@@ -91,6 +97,9 @@ func (r *usageReporter) setModel(model string) {
 // setInputContent stores the request payload for inclusion in usage records.
 // Call before starting the streaming goroutine.
 func (r *usageReporter) setInputContent(content string) {
+	if r != nil && r.metadataOnly {
+		return
+	}
 	if r == nil {
 		return
 	}
@@ -101,7 +110,7 @@ func (r *usageReporter) setInputContent(content string) {
 
 // appendOutputChunk accumulates a streaming response line for inclusion in usage records.
 func (r *usageReporter) appendOutputChunk(chunk []byte) {
-	if r == nil || len(chunk) == 0 {
+	if r == nil || r.metadataOnly || len(chunk) == 0 {
 		return
 	}
 	r.contentMu.Lock()
@@ -318,6 +327,9 @@ func (r *usageReporter) spillOutputBuilderToFileLocked() error {
 }
 
 func (r *usageReporter) finalizeContent() (string, string) {
+	if r != nil && r.metadataOnly {
+		return "", ""
+	}
 	if r == nil {
 		return "", ""
 	}
