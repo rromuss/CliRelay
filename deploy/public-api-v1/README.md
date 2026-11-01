@@ -105,3 +105,15 @@ Target-version update: the embedded metadata was regenerated from the official
 Codex 0.166.0 bundled catalog, preserving the tested Gemini-specific overrides.
 Reasoning-effort update items and multi-agent metadata are disabled because v1
 only qualifies medium reasoning and ordinary local tool calls.
+
+Ingress matchers additionally compare the original raw request URI. Caddy's
+ordinary path matcher normalizes escapes, case, duplicate slashes and dot
+segments; checking only that matcher before a fixed rewrite would lose the
+evidence needed to reject those alternate spellings. See the official
+[matcher documentation](https://caddyserver.com/docs/caddyfile/matchers) and
+[original URI implementation](https://github.com/caddyserver/caddy/blob/master/modules/caddyhttp/replacer.go).
+
+The release image can be built without a second GitHub clone by supplying a
+BuildKit context named `frontend-source`, containing `src/frontend/` from a
+clean `git archive` of the pinned panel commit. This overrides only the source
+fetch stage; the Dockerfile's build, locked dependencies and runtime stay intact.

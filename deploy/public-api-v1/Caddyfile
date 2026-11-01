@@ -9,6 +9,7 @@ https://cliprelay.romus.pro:8443 {
 	@models {
 		method GET
 		path /v1/models
+		expression `{http.request.orig_uri}.matches('^/v1/models([?]client_version=[0-9.]+)?$')`
 	}
 	handle @models {
 		rewrite * /external/v1/models
@@ -17,6 +18,7 @@ https://cliprelay.romus.pro:8443 {
 	@responses {
 		method POST
 		path /v1/responses
+		expression `{http.request.orig_uri}.matches('^/v1/responses([?]client_version=[0-9.]+)?$')`
 	}
 	handle @responses {
 		rewrite * /external/v1/responses
@@ -29,6 +31,7 @@ https://cliprelay.romus.pro:8443 {
 	@catalog {
 		method GET
 		path /codex/models
+		expression `{http.request.orig_uri}.matches('^/codex/models([?]client_version=[0-9.]+)?$')`
 	}
 	handle @catalog {
 		rewrite * /external/codex/models
