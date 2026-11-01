@@ -1,4 +1,6 @@
-# Merge as a dedicated client profile. Never overwrite existing providers/auth.
+# Merge these settings into the existing client config; do not replace the file.
+# Root model/provider settings select the default for new chats. Preserve all
+# other provider tables and the existing OpenAI login/auth store.
 # Store the API key in macOS Keychain, service CliRelay:cliprelay.romus.pro:8443,
 # account codex-laptop. Enter it interactively; never pass it in shell arguments.
 model = "gemini-3.8-flash-tiered"
