@@ -4,6 +4,25 @@ services:
   cli-proxy-api:
     image: clirelay-hermes:public-v1-${PUBLIC_API_REVISION:?pin the verified backend revision}
     pull_policy: never
+    # The production base file uses PWD interpolation. Pin the existing binds
+    # so invoking Compose from another directory cannot create empty stores.
+    volumes:
+      - type: bind
+        source: /opt/CliRelay/config.yaml
+        target: /CLIProxyAPI/config.yaml
+        bind: {create_host_path: false}
+      - type: bind
+        source: /opt/CliRelay/data
+        target: /CLIProxyAPI/data
+        bind: {create_host_path: false}
+      - type: bind
+        source: /opt/CliRelay/logs
+        target: /CLIProxyAPI/logs
+        bind: {create_host_path: false}
+      - type: bind
+        source: /opt/CliRelay/auths
+        target: /root/.cli-proxy-api
+        bind: {create_host_path: false}
     networks:
       public-ingress:
         aliases: [clirelay-public-backend]

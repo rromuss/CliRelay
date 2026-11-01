@@ -41,6 +41,11 @@ must stay disabled until private Codex qualification and old-Hermes checks pass.
    Build from the current SQLite-compatible source, pin the verified panel SHA.
    Do not use upstream `latest`, migrate to PostgreSQL/Redis or start updater.
 4. Preserve the exact existing Compose file set and loopback port bindings.
+   Invoke Compose from `/opt/CliRelay` and compare every effective mount with
+   the running-container baseline: the production base file interpolates `PWD`.
+   The overlay pins all four original absolute sources and disables automatic
+   creation of missing bind paths, preventing an invocation from another cwd
+   from mounting empty stores. Ports/networks alone are insufficient preflight.
    Create `clirelay-public-ingress`, attach only Caddy and CliRelay, and persist
    that network in each service's Compose definition. No staging network change.
 5. During the agreed quiet window drain active requests and replace only
