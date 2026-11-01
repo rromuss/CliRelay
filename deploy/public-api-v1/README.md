@@ -1,23 +1,29 @@
 # External Codex API v1 — deployment gate
 
-This directory is a release candidate, not evidence of deployment. Public access
-must stay disabled until private Codex qualification and old-Hermes checks pass.
+This directory owns the external API v1 contract and its staged releases.
+Live evidence is recorded in `RELEASE-2026-11-01.md` (text release) and `IMAGES.md`
+(image extension). For a new deployment keep public access disabled until the
+qualification and old-Hermes checks pass.
 
 ## Contract
 
 - Public URL: `https://cliprelay.romus.pro:8443/v1`; only GET models,
-  POST Responses (HTTP/SSE) and GET `/codex/models` are published.
+  POST Responses (HTTP/SSE), GET `/codex/models`, and the narrow POST
+  `/v1/images/generations` extension in `IMAGES.md` are published.
 - The `/external` namespace enforces Bearer authentication, the key-owned
   `external-access` opt-in, explicit model/channel restrictions and positive
   RPM/day/concurrency limits. All existing keys migrate to false.
 - Create a separate **Codex — ноутбук** key and profile: the selected Antigravity
   account, `gemini-3.8-flash-tiered`, 10 RPM, 300 started requests/UTC day,
   concurrency 2. Never modify the Hermes key or enable ModelHub fallback.
+  The image extension adds only `gemini-3.1-flash-image` to this profile after
+  separate release authorization; it does not replace the key or account.
 - Atomic admission is keyed by stable key ID; rotation and restarts do not reset
   the count. Denied requests are not charged against admission; an admitted
   upstream failure/cancellation still counts. SQLite failure is a public 503.
 - The external pool has two slots; private Hermes requests do not use it.
-  Request bodies are limited to 8 MiB after decompression and deadlines to 120 s.
+  Request bodies are limited to 8 MiB after decompression. Text deadlines are
+  120 s; the restricted image operation has a 300 s deadline and 1K output.
 - External detailed bodies/headers/cookies are not captured. Diagnostic usage
   records use stable identity and a non-credential key label. Existing private
   history and captures are not cleared or reconfigured.

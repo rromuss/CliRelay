@@ -15,7 +15,7 @@ const RATIOS = ['1:1', '16:9', '9:16'];
 const TOOL = {
   name: 'imagegen',
   title: 'Nano Banana 2 image generation',
-  description: 'Generate a real raster image from a text prompt using Gemini / Nano Banana 2 through the configured CliRelay account. Use for requests to draw or generate pictures. The existing CliRelay credential is used automatically; no OpenAI API key is needed. One 1K image per call. Returns a saved local image and Markdown to display it. Do not substitute SVG drawing for this tool.',
+  description: 'Generate a real raster image from a text prompt using Gemini / Nano Banana 2 through the configured CliRelay account. Use for requests to draw or generate pictures. The existing CliRelay credential is used automatically; no OpenAI API key is needed. One 1K image per call. Returns a saved local image and Markdown to display it. On denial or failure, report the error and never invent an image or filename. Do not substitute SVG drawing or retry failed generations automatically.',
   inputSchema: { type: 'object', properties: { prompt: { type: 'string', minLength: 1, maxLength: 16000, description: 'Describe the image to generate.' }, aspect_ratio: { type: 'string', enum: RATIOS, description: 'Default 1:1; use 16:9 for landscape or 9:16 for portrait.' } }, required: ['prompt'], additionalProperties: false },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
 };
@@ -120,7 +120,7 @@ export function runStdio({ input = process.stdin, output = process.stdout, gener
       initialized = true;
       const versions = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
       const version = versions.includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2025-11-25';
-      return reply(id, { protocolVersion: version, capabilities: { tools: {} }, serverInfo: { name: 'clirelay-images', version: '1.0.0' }, instructions: 'Use imagegen for image generation. It uses CliRelay / Nano Banana 2, saves the raster image, and returns Markdown to display it. No OpenAI key is needed.' });
+      return reply(id, { protocolVersion: version, capabilities: { tools: {} }, serverInfo: { name: 'clirelay-images', version: '1.0.0' }, instructions: 'Use imagegen for real image generation through CliRelay / Nano Banana 2. It returns a saved local file and Markdown. Display exactly that Markdown only after a successful tool result. If permission is denied or the call fails, report the failure; never claim an image was generated and never invent a filename. No OpenAI key is needed. Do not retry failed generations automatically.' });
     }
     if (message.method === 'ping') return reply(id, {});
     if (message.method === 'server/discover') return reject(id, -32601, 'Method not found');

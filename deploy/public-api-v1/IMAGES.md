@@ -1,15 +1,16 @@
-# Image generation — public-api.2 candidate
+# Image generation — public-api.2
 
-Status: implemented and tested locally; not deployed. Existing production remains
-public-api.1 until the separate release/data authorization is given.
+Status: committed, published, deployed and verified by the actual target-Mac CLI
+and owner desktop-image acceptance. Separate release/data authorization was
+explicitly received before any production or laptop mutation.
 
 ## Confirmed baseline
 
 The old Hermes uses its installed Antigravity image adapter, whose SHA matches
 the repository. It generates with `gemini-3.1-flash-image` (Nano Banana 2), 1K,
-through private Chat Completions with image/text modalities. A recent successful
-image record used a different channel from the laptop key; that does **not**
-prove image quota on the laptop's selected channel.
+through private Chat Completions with image/text modalities. At baseline a
+successful private image used another channel, so laptop-account image access
+was verified separately during this release rather than assumed.
 
 The laptop currently has no CliRelay image-generation tool configured. The first
 public release intentionally exposes only text Responses and catalogs; the
@@ -93,3 +94,45 @@ References: [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp)
 [MCP tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools),
 [stdio transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports),
 working Hermes adapter `server-extensions/hermes-plugins/image_gen/antigravity`.
+
+## Live evidence — 2026-11-01
+
+- Backend commit `13982f27`, version `v0.4.6-public-api.2`, pinned image
+  `clirelay-hermes:public-v2-13982f27`; image ID
+  `sha256:452323a4655f30cb986081c453b4a9bee75938b4619b300275f60d1a1036f75f`.
+  The prior panel SHA `c1da39079aca34a1889e937199955e156d4ee859` is unchanged.
+- Consistent SQLite/config backup kept under root only on the VPS, integrity
+  checked, 0700/0600. All four real bind mounts, loopback ports and private
+  networks were compared before/after; no PWD-dependent empty mounts occurred.
+- Old Hermes private catalog/capabilities/config/key fingerprints matched and
+  short inference passed before and after. Hermes, staging, Xray and Caddy
+  container start times/restart counts are unchanged; Caddy used graceful reload.
+- Only the existing laptop profile received the image model. Key value, stable
+  ID, external flags, selected account, 10 RPM/300 UTC-day/2-concurrent limits
+  and counters were preserved. The new image route rejects the old internal
+  key (403) and `n=2` (400); API catalog has two allowed models, reasoner
+  catalog still has only Gemini 3.8.
+- MCP installed on the target Mac with a private config backup. The real
+  bundled CLI `0.166.0-alpha.5.1` called the installed image tool and generated
+  one real strawberry image through the public HTTPS route: JPEG 1024x1024,
+  616501 bytes, file mode 0600. Its final response contained the returned
+  absolute Markdown image path. A following text turn recalled the test marker.
+- The first CLI probe was denied before the API because `codex exec` used
+  approval=never. The revised disposable test config approves only the explicitly
+  authorized, one-operation-bounded imagegen tool. The actual desktop thread
+  retains on-request approvals; no permanent approval rules were weakened.
+  After the denied call the model invented an image link; no artifact existed
+  and the test rejected it. MCP guidance now explicitly forbids such claims.
+- The wrapper and server metadata both confirm exactly one successful image
+  operation on the laptop's selected channel. Input/output/detail blobs are
+  empty and the stored usage label is not a credential. No automatic retries,
+  account fallback, extra image generations or OpenAI image API calls were used.
+- A copy of this synthetic fruit fixture was retrieved only for visual review.
+  Databases, real client configs, OAuth and personal photos were not copied
+  between machines for that review. No real client configs or images were
+  added to Git.
+- Owner desktop acceptance completed: after restarting ChatGPT, an ordinary
+  Russian request to generate a sliced strawberry returned an actual image in
+  the Gemini chat. This confirms the natural-language UI flow, not only the
+  explicitly directed CLI tool test. Further owner-initiated generations are
+  normal use and are separate from the agent's one-image control budget.

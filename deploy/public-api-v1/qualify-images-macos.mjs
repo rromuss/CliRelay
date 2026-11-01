@@ -24,7 +24,9 @@ const resultPath = path.join(root, 'image-result.json'), countPath = path.join(r
 const wrapper = path.join(root, 'one-image-mcp.mjs');
 fs.writeFileSync(wrapper, `import fs from 'node:fs';\nimport {createImageTool,runStdio} from ${JSON.stringify(pathToFileURL(realModule).href)};\nlet attempts=0,requests=0;const generate=createImageTool();\nrunStdio({generate:async(args,signal)=>{attempts++;if(requests){fs.writeFileSync(${JSON.stringify(countPath)},JSON.stringify({attempts,requests}),{mode:0o600});throw Error('one-image test limit');}requests++;fs.writeFileSync(${JSON.stringify(countPath)},JSON.stringify({attempts,requests}),{mode:0o600});const result=await generate(args,signal);fs.writeFileSync(${JSON.stringify(resultPath)},JSON.stringify(result),{mode:0o600});return result;}});\n`, { mode: 0o600 });
 const config = path.join(home, 'config.toml');
-fs.writeFileSync(config, `model="gemini-3.8-flash-tiered"\nmodel_provider="clirelay-antigravity"\nmodel_reasoning_effort="medium"\nweb_search="disabled"\n${provider}\n[mcp_servers.clirelay_images]\ncommand=${JSON.stringify(process.execPath)}\nargs=[${JSON.stringify(wrapper)}]\nstartup_timeout_sec=15\ntool_timeout_sec=330\n`, { mode: 0o600 });
+// `codex exec` defaults to approval=never. The owner explicitly authorized this
+// one operation, so approve only this bounded test tool, not the real client.
+fs.writeFileSync(config, `model="gemini-3.8-flash-tiered"\nmodel_provider="clirelay-antigravity"\nmodel_reasoning_effort="medium"\nweb_search="disabled"\n${provider}\n[mcp_servers.clirelay_images]\ncommand=${JSON.stringify(process.execPath)}\nargs=[${JSON.stringify(wrapper)}]\nstartup_timeout_sec=15\ntool_timeout_sec=330\n[mcp_servers.clirelay_images.tools.imagegen]\napproval_mode="approve"\n`, { mode: 0o600 });
 const environment = { ...process.env, CODEX_HOME: home };
 for (const name of ['OPENAI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_API_KEY']) delete environment[name];
 async function run(args, name, timeout) {
