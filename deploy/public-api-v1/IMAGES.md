@@ -119,8 +119,10 @@ working Hermes adapter `server-extensions/hermes-plugins/image_gen/antigravity`.
   absolute Markdown image path. A following text turn recalled the test marker.
 - The first CLI probe was denied before the API because `codex exec` used
   approval=never. The revised disposable test config approves only the explicitly
-  authorized, one-operation-bounded imagegen tool. The actual desktop thread
-  retains on-request approvals; no permanent approval rules were weakened.
+  authorized, one-operation-bounded imagegen tool. The inspected desktop thread
+  used on-request approvals. After GUI acceptance a dedicated imagegen
+  `approval_mode="approve"` entry is present; the installer/test did not change
+  global approval or shell settings.
   After the denied call the model invented an image link; no artifact existed
   and the test rejected it. MCP guidance now explicitly forbids such claims.
 - The wrapper and server metadata both confirm exactly one successful image
