@@ -102,8 +102,8 @@ func TestRepositoryComposeDoesNotCreateEnvDirectoryForUpdater(t *testing.T) {
 func TestRepositoryBuildPinsHermesPanelSource(t *testing.T) {
 	const (
 		panelRepository = "https://github.com/rromuss/codeProxy.git"
-		panelRef        = "hermes-stable"
-		panelCommit     = "d1e963d31b785986d355f85ccdf891ad8dcfc7f8"
+		panelRef        = "codex/public-api-v1"
+		panelCommit     = "c1da39079aca34a1889e937199955e156d4ee859"
 	)
 
 	for _, file := range []string{"Dockerfile", "docker-compose.yml"} {

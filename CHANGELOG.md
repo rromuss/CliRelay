@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v0.4.6-public-api.2 — image generation candidate (local)
+
+- Добавлен узкий внешний Images API для Nano Banana 2 через тот же native
+  Chat Completions/executor path, который использует старый Hermes.
+- Image-модель требует отдельного разрешения ключа, разделяет existing durable
+  admission и внешний пул с текстом; private Hermes routes не меняются.
+- Подготовлен локальный stdio MCP imagegen для macOS: существующий ключ,
+  фиксированный HTTPS endpoint, закрытый каталог PNG/JPEG/WebP, без передачи
+  base64 в историю текстовой модели и без дополнительного OpenAI API key.
+- Согласован pin панели в Compose и build-contract test с уже выпущенным
+  Dockerfile/public UI SHA, чтобы следующая сборка сохраняла external opt-in UI.
+- Локальные guard/execution/Node tests и discovery настоящим Codex прошли.
+  Production, профиль ноутбука и клиентская MCP-конфигурация пока не изменены;
+  live image quota выбранного аккаунта ещё не проверена.
+
 ## v0.4.6-public-api.1 — ограниченный внешний Codex API
 
 - Добавлен отдельный `/external` ingress: закрытый по умолчанию opt-in ключа,

@@ -23,12 +23,14 @@ func TestExternalPrivacyDoesNotChangePrivateCapture(t *testing.T) {
 	if buildRequestDetailContent(ctx) != "" {
 		t.Fatal("external credentials captured")
 	}
-	r := newUsageReporter(ctx, "antigravity", publicapi.Model, nil)
-	r.setInputContent("fixture-private-prompt")
-	r.appendOutputChunk(make([]byte, usageReporterOutputMemoryLimit+100))
-	input, output := r.finalizeContent()
-	if input != "" || output != "" || r.outputFile != nil {
-		t.Fatal("external content retained or spilled")
+	for _, model := range []string{publicapi.Model, publicapi.ImageModel} {
+		r := newUsageReporter(ctx, "antigravity", model, nil)
+		r.setInputContent("fixture-private-prompt")
+		r.appendOutputChunk(make([]byte, usageReporterOutputMemoryLimit+100))
+		input, output := r.finalizeContent()
+		if input != "" || output != "" || r.outputFile != nil {
+			t.Fatal("external content retained or spilled", model)
+		}
 	}
 	attempts, urls := antigravityAttemptPlan(nil, nil, coreexecutor.Options{Metadata: map[string]any{"external_api": true}}, []string{"a", "b"})
 	if attempts != 1 || len(urls) != 1 {

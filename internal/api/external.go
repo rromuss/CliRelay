@@ -1,11 +1,8 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
-	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,7 +13,6 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/api/middleware"
 	keysettings "github.com/router-for-me/CLIProxyAPI/v6/internal/management/settings/apikey"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/publicapi"
-	sqlapikey "github.com/router-for-me/CLIProxyAPI/v6/internal/storage/sqlite/apikey"
 )
 
 type externalAdmission struct {
@@ -59,7 +55,7 @@ func externalBoundary() gin.HandlerFunc {
 		}
 		c.Request = c.Request.WithContext(publicapi.WithSession(c.Request.Context(), publicapi.NewSession()))
 		c.Header("Cache-Control", "no-store")
-		valid := (c.Request.Method == http.MethodGet && (path == "/external/v1/models" || path == "/external/codex/models")) || (c.Request.Method == http.MethodPost && path == "/external/v1/responses")
+		valid := (c.Request.Method == http.MethodGet && (path == "/external/v1/models" || path == "/external/codex/models")) || (c.Request.Method == http.MethodPost && (path == "/external/v1/responses" || path == "/external/v1/images/generations"))
 		if !valid || c.Request.URL.EscapedPath() != path {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
@@ -95,7 +91,11 @@ func externalBoundary() gin.HandlerFunc {
 		for _, h := range []string{"Cookie", "X-Management-Key", "X-Api-Key", "X-Goog-Api-Key", "X-Hermes-Fallback-Policy"} {
 			c.Request.Header.Del(h)
 		}
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+		deadline := 120 * time.Second
+		if path == "/external/v1/images/generations" {
+			deadline = publicapi.ImageTimeoutSeconds * time.Second
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), deadline)
 		defer cancel()
 		c.Request = c.Request.WithContext(ctx)
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, publicapi.BodyLimit)
@@ -118,13 +118,7 @@ func (s *Server) setupExternalRoutes(respond gin.HandlerFunc) {
 			c.AbortWithStatusJSON(403, gin.H{"error": "external access is disabled"})
 			return
 		}
-		allowed := false
-		for _, model := range entry.AllowedModels {
-			if model == publicapi.Model {
-				allowed = true
-			}
-		}
-		if !allowed || len(entry.AllowedChannels) == 0 || entry.DailyLimit <= 0 || entry.RPMLimit <= 0 || entry.ConcurrencyLimit <= 0 {
+		if len(externalAllowedModels(entry)) == 0 || len(entry.AllowedChannels) == 0 || entry.DailyLimit <= 0 || entry.RPMLimit <= 0 || entry.ConcurrencyLimit <= 0 {
 			c.AbortWithStatusJSON(403, gin.H{"error": "external access requires an explicit model, channel and positive limits"})
 			return
 		}
@@ -139,61 +133,25 @@ func (s *Server) setupExternalRoutes(respond gin.HandlerFunc) {
 		c.Next()
 	})
 	group.GET("/v1/models", func(c *gin.Context) {
-		c.JSON(200, gin.H{"object": "list", "data": []gin.H{{"id": publicapi.Model, "object": "model", "owned_by": "antigravity"}}})
+		models := []gin.H{}
+		for _, model := range externalAllowedModels(settings.ExternalEntry(c.GetString("apiKey"))) {
+			models = append(models, gin.H{"id": model, "object": "model", "owned_by": "antigravity"})
+		}
+		c.JSON(200, gin.H{"object": "list", "data": models})
 	})
-	group.GET("/codex/models", externalCodexCatalog)
-	group.POST("/v1/responses", middleware.QuotaMiddleware(), func(c *gin.Context) {
-		entry := settings.ExternalEntry(c.GetString("apiKey"))
-		if entry == nil || !entry.ExternalAccess {
-			c.AbortWithStatus(403)
+	group.GET("/codex/models", func(c *gin.Context) {
+		if !externalModelAllowed(settings.ExternalEntry(c.GetString("apiKey")), publicapi.Model) {
+			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
-		if !admission.acquire(entry.ID, entry.ConcurrencyLimit) {
-			c.Header("Retry-After", "1")
-			c.AbortWithStatusJSON(429, gin.H{"error": "external concurrency limit exceeded"})
-			return
-		}
-		defer admission.release(entry.ID)
-
-		body, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			var tooLarge *http.MaxBytesError
-			if errors.As(err, &tooLarge) {
-				c.AbortWithStatusJSON(413, gin.H{"error": "request body exceeds 8 MiB"})
-			} else {
-				c.AbortWithStatusJSON(400, gin.H{"error": "invalid request body"})
-			}
-			return
-		}
-		session := publicapi.FromContext(c.Request.Context())
-		body, err = session.Normalize(body)
-		if err != nil {
-			status := 400
-			if strings.Contains(err.Error(), "model is not") {
-				status = 403
-			}
-			c.AbortWithStatusJSON(status, gin.H{"error": err.Error()})
-			return
-		}
-		if int64(len(body)) > publicapi.BodyLimit {
-			c.AbortWithStatusJSON(413, gin.H{"error": "normalized request exceeds 8 MiB"})
-			return
-		}
-		if err = settings.AdmitExternal(c.Request.Context(), *entry, time.Now()); err != nil {
-			status := 503
-			message := "external admission unavailable"
-			if errors.Is(err, sqlapikey.ErrExternalDailyLimit) || errors.Is(err, sqlapikey.ErrExternalRateLimit) {
-				status = 429
-				message = err.Error()
-				c.Header("Retry-After", "60")
-			}
-			c.AbortWithStatusJSON(status, gin.H{"error": message})
-			return
-		}
-		c.Request.Body = io.NopCloser(bytes.NewReader(body))
-		c.Request.ContentLength = int64(len(body))
-		respond(c)
+		externalCodexCatalog(c)
 	})
+	group.POST("/v1/responses", middleware.QuotaMiddleware(), externalInferenceHandler(settings, admission, publicapi.Model, func(c *gin.Context, body []byte) ([]byte, error) {
+		return publicapi.FromContext(c.Request.Context()).Normalize(body)
+	}, respond))
+	group.POST("/v1/images/generations", middleware.QuotaMiddleware(), externalInferenceHandler(settings, admission, publicapi.ImageModel, func(_ *gin.Context, body []byte) ([]byte, error) {
+		return publicapi.ImageRequestToChat(body)
+	}, s.externalImageGeneration))
 }
 
 // Versioned Codex metadata is embedded rather than fetched with caller credentials.

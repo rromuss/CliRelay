@@ -97,7 +97,7 @@ func TestExternalHTTPStreamingCancellationAndPoolIsolation(t *testing.T) {
 	t.Cleanup(usage.CloseDB)
 	for _, r := range []usage.APIKeyRow{
 		{Key: "private-pool-fixture", Name: "Hermes"},
-		{Key: "public-pool-fixture", ExternalAccess: true, AllowedModels: []string{publicapi.Model}, AllowedChannels: []string{"fixture-channel"}, DailyLimit: 300, RPMLimit: 100, ConcurrencyLimit: 2},
+		{Key: "public-pool-fixture", ExternalAccess: true, AllowedModels: []string{publicapi.Model, publicapi.ImageModel}, AllowedChannels: []string{"fixture-channel"}, DailyLimit: 300, RPMLimit: 100, ConcurrencyLimit: 2},
 	} {
 		if err := usage.UpsertAPIKey(r); err != nil {
 			t.Fatal(err)
@@ -146,6 +146,16 @@ func TestExternalHTTPStreamingCancellationAndPoolIsolation(t *testing.T) {
 	third.Body.Close()
 	if third.StatusCode != 429 {
 		t.Fatal("external pool exceeded")
+	}
+	imageReq, _ := http.NewRequest("POST", server.URL+"/external/v1/images/generations", strings.NewReader(`{"prompt":"fixture"}`))
+	imageReq.Header.Set("Authorization", "Bearer public-pool-fixture")
+	imageResp, err := http.DefaultClient.Do(imageReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imageResp.Body.Close()
+	if imageResp.StatusCode != 429 {
+		t.Fatal("image operation bypassed the shared external pool")
 	}
 	req, _ := http.NewRequest("GET", server.URL+"/v1/models", nil)
 	req.Header.Set("Authorization", "Bearer private-pool-fixture")

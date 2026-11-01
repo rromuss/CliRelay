@@ -37,6 +37,21 @@ https://cliprelay.romus.pro:8443 {
 		rewrite * /external/codex/models
 		reverse_proxy clirelay-public-backend:8317
 	}
+	@images {
+		method POST
+		path /v1/images/generations
+		expression `{http.request.orig_uri} == '/v1/images/generations'`
+	}
+	handle @images {
+		rewrite * /external/v1/images/generations
+		reverse_proxy clirelay-public-backend:8317 {
+			transport http {
+				response_header_timeout 305s
+			}
+			header_up -Cookie
+			header_up -X-Management-Key
+		}
+	}
 	handle {
 		respond 404
 	}
