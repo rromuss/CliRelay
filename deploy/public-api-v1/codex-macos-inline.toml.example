@@ -1,0 +1,17 @@
+# Owner-selected variant without Keychain. This is a placeholder, not a key.
+# Apply only on the client, preserving other config; file permissions must be 0600.
+model = "gemini-3.8-flash-tiered"
+model_provider = "clirelay-antigravity"
+model_reasoning_effort = "medium"
+web_search = "disabled"
+# Remove prior provider-specific context overrides; use this model's catalog.
+
+[model_providers.clirelay-antigravity]
+name = "CliRelay Antigravity"
+base_url = "https://cliprelay.romus.pro:8443/v1"
+model_catalog_url = "https://cliprelay.romus.pro:8443/codex/models"
+wire_api = "responses"
+experimental_bearer_token = "SET_KEY_ON_CLIENT_ONLY"
+supports_websockets = false
+request_max_retries = 0
+stream_max_retries = 0
