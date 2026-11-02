@@ -143,7 +143,7 @@ export function runStdio({ input = process.stdin, output = process.stdout, gener
     const controller = new AbortController(); active.set(id, controller);
     try {
       const image = await generate(message.params.arguments, controller.signal);
-      reply(id, { content: [{ type: 'text', text: `Изображение готово. Покажи его пользователю с помощью Markdown:\n${image.markdown}` }], structuredContent: image, isError: false });
+      reply(id, { content: [{ type: 'text', text: `Изображение готово. reference_id для следующей правки: ${image.reference_id}. Покажи его пользователю с помощью Markdown:\n${image.markdown}` }], structuredContent: image, isError: false });
     } catch (error) {
       reply(id, { content: [{ type: 'text', text: error instanceof ToolError ? error.message : 'Не удалось сгенерировать изображение CliRelay.' }], isError: true });
     } finally { active.delete(id); }

@@ -72,7 +72,7 @@ test('errors suppress upstream secrets and do not retry; cancellation creates no
 test('MCP stdio framing discovers the image tool and returns text, not image history', async () => {
   const input = new PassThrough(), output = new PassThrough(); let raw = '';
   output.setEncoding('utf8'); output.on('data', chunk => { raw += chunk; });
-  runStdio({ input, output, generate: async args => ({ path: '/fixture/image.png', markdown: '![image](/fixture/image.png)', model: 'gemini-3.1-flash-image', promptNotReturned: args.prompt !== undefined }) });
+  runStdio({ input, output, generate: async args => ({ path: '/fixture/image.png', reference_id: 'out-fixture', markdown: '![image](/fixture/image.png)', model: 'gemini-3.1-flash-image', promptNotReturned: args.prompt !== undefined }) });
   for (const message of [
     { jsonrpc: '2.0', id: 0, method: 'server/discover' },
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } },
@@ -88,5 +88,6 @@ test('MCP stdio framing discovers the image tool and returns text, not image his
   const result = responses.find(x => x.id === 3).result;
   assert.equal(result.isError, false); assert.deepEqual(result.content.map(x => x.type), ['text']);
   assert.ok(result.content[0].text.includes('/fixture/image.png')); assert.ok(!raw.includes(key));
+  assert.ok(result.content[0].text.includes('out-fixture'), 'reference ID must survive clients that project only text content');
   input.end();
 });
