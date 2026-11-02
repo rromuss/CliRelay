@@ -149,5 +149,10 @@ accounting for already consumed image calls. The original screenshot/nonce
 fixtures and private test profiles are local to the client.
 
 The owner confirmed that the old Telegram-Hermes works after deployment.
-Desktop GUI browser/source-opening is still awaiting acceptance and remote
-screen access from the owner's phone; CLI browser control is not claimed.
+Desktop GUI acceptance completed on 2026-11-02 in a new Gemini chat on the
+actual client: image input/analysis worked, the built-in browser completed the
+form/button/link/scroll workflow and reported the matching per-run page marker,
+and search found documentation and opened a source page. These are the owner's
+desktop confirmations in addition to the automated checks above. No additional
+image generation was requested for this acceptance. CLI browser control is not
+claimed; the temporary loopback acceptance pages can be stopped.
