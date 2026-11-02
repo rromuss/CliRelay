@@ -148,5 +148,6 @@ generation. Do not rerun a two-edit qualification after partial success without
 accounting for already consumed image calls. The original screenshot/nonce
 fixtures and private test profiles are local to the client.
 
-Desktop GUI browser/source-opening and the owner's old Telegram-Hermes checks
-are still awaiting explicit acceptance; CLI browser control is not claimed.
+The owner confirmed that the old Telegram-Hermes works after deployment.
+Desktop GUI browser/source-opening is still awaiting acceptance and remote
+screen access from the owner's phone; CLI browser control is not claimed.
