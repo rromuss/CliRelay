@@ -114,6 +114,10 @@ func (s *Session) Normalize(raw []byte) ([]byte, error) {
 		}
 	}
 	if tools, ok := root["tools"].([]any); ok {
+		tools, err := clientSearchTools(tools)
+		if err != nil {
+			return nil, err
+		}
 		flat, err := s.tools(tools, "")
 		if err != nil {
 			return nil, err

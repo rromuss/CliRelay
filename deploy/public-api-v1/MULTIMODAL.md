@@ -51,6 +51,13 @@ Failures explicitly request built-in-browser fallback; raw provider errors and
 query logs are not emitted. Full pages are opened with the built-in browser;
 citations must refer to pages actually read. See [DDGS](https://github.com/deedy5/ddgs).
 
+Codex 0.166 includes an eager unnamed hosted `web_search` descriptor when the
+root search setting is absent. The external adapter omits that descriptor only
+when the concrete `mcp__clirelay_search.web_search` function is also declared.
+Only the real client-executed MCP function reaches Gemini; hosted search still
+fails explicitly without that executor. The user's removed root setting remains
+absent, and no OpenAI-hosted search operation is simulated or forwarded.
+
 The built-in browser uses the existing native CUA tool. No extra browser MCP,
 full CDP, global macOS Accessibility permission or automatic site approval is
 installed. Native site/sensitive-action confirmations remain in force. See
