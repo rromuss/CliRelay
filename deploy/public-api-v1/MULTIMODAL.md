@@ -108,5 +108,45 @@ Preparation evidence (2026-11-02): the complete Go suite passed for 74 packages,
 Installing the hash-locked DDGS environment succeeded; one public control query
 returned three DuckDuckGo results. SSH verified the actual client as Codex
 0.166.0-alpha.5.1, Node 24.22.1 and managed Python 3.12.14. The removed hosted
-search setting is absent. Production remains the preceding v2 image until the
-separate release approval; the client tools and live acceptance are not yet run.
+search setting was absent. At that preparation point production still used v2;
+the separately approved deployment and the live evidence follow below.
+
+## Approved deployment and automated live evidence
+
+The deployed backend is `f932be33`, image
+`clirelay-hermes:public-v3-f932be33` with ID
+`sha256:4c01bf1b26bbf84abf77556d3e1d94df4666c837671ec2cc5b3bbbf518a70059`.
+The panel remains pinned to `c1da3907`. The client MCP clarification from
+`1f966c5a` also places `reference_id` in text content so history does not depend
+on a client's treatment of `structuredContent`.
+
+Native Codex 0.166 on the actual client passed OCR with no tool shortcuts,
+comparison of two images, image-history replay, and an actual apply_patch. It
+prepared the synthetic original through the ordinary execution helper and made
+exactly two bounded image edits: original to red background, then the first
+result's ID to green background. Real private files and Markdown were produced;
+the original hash was unchanged. A separate vision-only turn confirmed those
+two background colors. The model called the separate search MCP and returned
+real links.
+
+A separate temporary screenshot fixture proved that the live Antigravity path
+can read an image nested in a function result and preserve both surrounding
+text markers. It allowed only that fixture tool, with no shell/file shortcuts
+and no further generation calls. The fixture is not a new browser integration.
+
+Server-side aggregate checks found exactly two successful image operations and
+zero captured bytes of external input/output/detail content or credential
+labels. All key/profile rows remained unchanged. The old private Hermes
+catalog, capabilities, key/config fingerprints and synthetic inference matched
+the pre-release baseline. Hermes, staging, Xray and Caddy were not restarted.
+Backups and their fingerprints stay closed on the VPS; the private client
+config backups stay on the client. No user records were copied into this repo.
+
+`qualify-multimodal-macos.mjs` reproduces the bounded native client checks;
+`qualify-tool-images-macos.mjs` adds the nested screenshot check without image
+generation. Do not rerun a two-edit qualification after partial success without
+accounting for already consumed image calls. The original screenshot/nonce
+fixtures and private test profiles are local to the client.
+
+Desktop GUI browser/source-opening and the owner's old Telegram-Hermes checks
+are still awaiting explicit acceptance; CLI browser control is not claimed.

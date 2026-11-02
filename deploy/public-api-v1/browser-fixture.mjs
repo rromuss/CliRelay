@@ -14,6 +14,6 @@ const server = http.createServer((request, response) => {
   response.writeHead(body ? 200 : 404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'" });
   response.end(body ?? 'Not found');
 });
-server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({ url: `http://127.0.0.1:${server.address().port}/`, expires_in_seconds: 1800, marker })));
+server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({ url: `http://127.0.0.1:${server.address().port}/`, pid: process.pid, expires_in_seconds: 1800, marker })));
 const timeout = setTimeout(() => server.close(), 1800000); timeout.unref();
 process.on('SIGTERM', () => server.close());
