@@ -14,14 +14,18 @@ const ImageTimeoutSeconds = 300
 const ImageOutputLimit = 20 << 20
 
 // ImageRequestToChat exposes only the narrow generation operation used by the
-// Hermes adapter. Callers cannot supply messages, tools, references or URLs.
+// Hermes adapter. References are inline raster data, never remote URLs.
 func ImageRequestToChat(raw []byte) ([]byte, error) {
+	if int64(len(raw)) > BodyLimit {
+		return nil, errors.New("image request is too large")
+	}
 	var request struct {
-		Model          string `json:"model"`
-		Prompt         string `json:"prompt"`
-		AspectRatio    string `json:"aspect_ratio"`
-		N              *int   `json:"n"`
-		ResponseFormat string `json:"response_format"`
+		Model           string   `json:"model"`
+		Prompt          string   `json:"prompt"`
+		AspectRatio     string   `json:"aspect_ratio"`
+		N               *int     `json:"n"`
+		ResponseFormat  string   `json:"response_format"`
+		ReferenceImages []string `json:"reference_images"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
@@ -52,9 +56,19 @@ func ImageRequestToChat(raw []byte) ([]byte, error) {
 	default:
 		return nil, errors.New("unsupported image aspect ratio")
 	}
+	if len(request.ReferenceImages) > 14 {
+		return nil, errors.New("at most 14 reference images are supported")
+	}
+	content := []any{map[string]any{"type": "text", "text": request.Prompt}}
+	for _, image := range request.ReferenceImages {
+		if err := validateInlineRaster(image, int(BodyLimit)); err != nil {
+			return nil, err
+		}
+		content = append(content, map[string]any{"type": "image_url", "image_url": map[string]any{"url": image}})
+	}
 	return json.Marshal(map[string]any{
 		"model": ImageModel, "modalities": []string{"image", "text"}, "stream": false,
-		"messages":     []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": request.Prompt}}}},
+		"messages":     []any{map[string]any{"role": "user", "content": content}},
 		"image_config": map[string]any{"aspect_ratio": request.AspectRatio, "image_size": "1K"},
 	})
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
@@ -57,6 +58,16 @@ func TestExternalRoutesFailClosedAndPreserveHermes(t *testing.T) {
 			s.engine.ServeHTTP(w, req)
 			if w.Code != tc.status {
 				t.Fatalf("got %d want %d: %.200s", w.Code, tc.status, w.Body.String())
+			}
+			if tc.path == "/external/codex/models?client_version=0.166.0" && w.Code == 200 {
+				var catalog struct {
+					Models []struct {
+						Modalities []string `json:"input_modalities"`
+					} `json:"models"`
+				}
+				if json.Unmarshal(w.Body.Bytes(), &catalog) != nil || len(catalog.Models) != 1 || strings.Join(catalog.Models[0].Modalities, ",") != "text,image" {
+					t.Fatal("qualified Gemini catalog must advertise text and image input")
+				}
 			}
 		})
 	}

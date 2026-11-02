@@ -82,6 +82,9 @@ func (s *Session) tools(raw []any, ns string) ([]any, error) {
 // Normalize is stateless across conversations: aliases are deterministic and
 // each request carries its own original tool definitions and history.
 func (s *Session) Normalize(raw []byte) ([]byte, error) {
+	if int64(len(raw)) > BodyLimit {
+		return nil, errors.New("external request is too large")
+	}
 	var root map[string]any
 	if err := json.Unmarshal(raw, &root); err != nil || root == nil {
 		return nil, errors.New("invalid JSON request")
@@ -139,17 +142,14 @@ func (s *Session) Normalize(raw []byte) ([]byte, error) {
 				return nil, errors.New("unsupported history item type")
 			}
 			if kind == "message" || kind == "" {
-				if content, ok := item["content"].([]any); ok {
-					for _, value := range content {
-						part, ok := value.(map[string]any)
-						if !ok {
-							return nil, errors.New("invalid message content")
-						}
-						typ, _ := part["type"].(string)
-						if typ != "input_text" && typ != "output_text" && typ != "" {
-							return nil, errors.New("external v1 accepts text input only")
-						}
-					}
+				role, _ := item["role"].(string)
+				if err := validateContentParts(item["content"], false, role); err != nil {
+					return nil, err
+				}
+			}
+			if kind == "function_call_output" || kind == "custom_tool_call_output" {
+				if err := validateContentParts(item["output"], true, ""); err != nil {
+					return nil, err
 				}
 			}
 			if kind == "custom_tool_call" || kind == "function_call" {

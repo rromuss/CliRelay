@@ -13,7 +13,7 @@ function setup(t) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const configPath = path.join(root, 'config.toml'), outputDirectory = path.join(root, 'images');
   fs.writeFileSync(configPath, `[model_providers.clirelay-antigravity]\nbase_url = "https://cliprelay.romus.pro:8443/v1"\nexperimental_bearer_token = "${key}"\n`, { mode: 0o600 });
-  return { root, configPath, outputDirectory };
+  return { root, configPath, outputDirectory, referenceRoot: path.join(root, 'references') };
 }
 function imageResponse(extra = {}) {
   return new Response(JSON.stringify({ data: [{ b64_json: fixture.toString('base64'), mime_type: 'image/png', ...extra }] }), { status: 200 });

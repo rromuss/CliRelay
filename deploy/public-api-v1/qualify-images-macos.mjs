@@ -8,8 +8,11 @@ import { pathToFileURL } from 'node:url';
 
 if (process.argv[2] !== '--allow-live-one-image') throw new Error('explicit one-image authorization required');
 const codex = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex';
-const realModule = path.join(os.homedir(), '.codex/tools/clirelay-images/server.mjs');
 const actual = fs.readFileSync(path.join(os.homedir(), '.codex/config.toml'), 'utf8');
+const mcpSection = actual.match(/^\[mcp_servers\.clirelay_images\]\s*\n([\s\S]*?)(?=^[ \t]*\[|$(?![\s\S]))/m)?.[1];
+const configuredArgs = mcpSection?.match(/^args\s*=\s*(\[[^\n]*\])\s*$/m)?.[1];
+const parsedArgs = configuredArgs ? JSON.parse(configuredArgs) : [];
+const realModule = parsedArgs.length === 1 && typeof parsedArgs[0] === 'string' ? parsedArgs[0] : '';
 const lines = actual.split('\n');
 const start = lines.findIndex(line => line.trim() === '[model_providers.clirelay-antigravity]');
 const next = lines.findIndex((line, index) => index > start && /^\s*\[/.test(line));

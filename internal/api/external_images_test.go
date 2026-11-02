@@ -100,13 +100,27 @@ func TestExternalImageOperationAuthorizationAndDurableAdmission(t *testing.T) {
 	if !strings.Contains(models, publicapi.ImageModel) || strings.Contains(models, publicapi.Model) {
 		t.Fatal("model catalog exceeds key scope")
 	}
-	response := request(path, "POST", "image-allowed-fixture", `{"prompt":"fixture","aspect_ratio":"9:16"}`, 200)
+	reference := "data:image/png;base64," + base64.StdEncoding.EncodeToString([]byte("\x89PNG\r\n\x1a\nfixture"))
+	editBody, _ := json.Marshal(map[string]any{"prompt": "fixture", "aspect_ratio": "9:16", "reference_images": []string{reference}})
+	response := request(path, "POST", "image-allowed-fixture", string(editBody), 200)
 	var output map[string]any
 	if json.Unmarshal([]byte(response), &output) != nil || output["data"] == nil || strings.Contains(response, "choices") {
 		t.Fatal("image envelope conversion failed")
 	}
 	if executor.calls != 1 || executor.channel != "image-team" || executor.metadata["external_api"] != true || executor.metadata[coreexecutor.SinglePickMetadataKey] != true {
 		t.Fatal("image operation lost channel/single-attempt isolation")
+	}
+	var chat struct {
+		Messages []struct {
+			Content []struct {
+				ImageURL struct {
+					URL string `json:"url"`
+				} `json:"image_url"`
+			} `json:"content"`
+		} `json:"messages"`
+	}
+	if json.Unmarshal(executor.payload, &chat) != nil || len(chat.Messages) != 1 || len(chat.Messages[0].Content) != 2 || chat.Messages[0].Content[1].ImageURL.URL != reference {
+		t.Fatal("reference did not reach the scoped image executor")
 	}
 	request(path, "POST", "image-allowed-fixture", `{"prompt":"fixture"}`, 429)
 	if executor.calls != 1 {

@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { createReferenceStore } from './image-references.mjs';
 
 const BASE_URL = 'https://cliprelay.romus.pro:8443/v1';
 const IMAGE_MODEL = 'gemini-3.1-flash-image';
@@ -14,9 +15,9 @@ const MAX_RESPONSE_BYTES = MAX_BASE64_BYTES + 65536;
 const RATIOS = ['1:1', '16:9', '9:16'];
 const TOOL = {
   name: 'imagegen',
-  title: 'Nano Banana 2 image generation',
-  description: 'Generate a real raster image from a text prompt using Gemini / Nano Banana 2 through the configured CliRelay account. Use for requests to draw or generate pictures. The existing CliRelay credential is used automatically; no OpenAI API key is needed. One 1K image per call. Returns a saved local image and Markdown to display it. On denial or failure, report the error and never invent an image or filename. Do not substitute SVG drawing or retry failed generations automatically.',
-  inputSchema: { type: 'object', properties: { prompt: { type: 'string', minLength: 1, maxLength: 16000, description: 'Describe the image to generate.' }, aspect_ratio: { type: 'string', enum: RATIOS, description: 'Default 1:1; use 16:9 for landscape or 9:16 for portrait.' } }, required: ['prompt'], additionalProperties: false },
+  title: 'Nano Banana 2 image generation and editing',
+  description: `Generate or edit a real 1K image through CliRelay / Nano Banana 2. For edits, pass reference_ids from prior results. To prepare a user file, first use the ordinary Codex execution tool to run ${JSON.stringify(process.execPath)} ${JSON.stringify(fileURLToPath(new URL('./prepare-reference.mjs', import.meta.url)))} <absolute-source-path>; this preserves native filesystem approvals. Never pass source paths to imagegen. Uses the existing account and key. Display only returned successful Markdown; never invent files or retry failed generations automatically.`,
+  inputSchema: { type: 'object', properties: { prompt: { type: 'string', minLength: 1, maxLength: 16000, description: 'Describe the image to generate or the edit to apply.' }, aspect_ratio: { type: 'string', enum: RATIOS, description: 'Default 1:1; use 16:9 for landscape or 9:16 for portrait.' }, reference_ids: { type: 'array', maxItems: 14, items: { type: 'string' }, description: 'Opaque reference IDs from the preparation helper or a prior successful imagegen result.' } }, required: ['prompt'], additionalProperties: false },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
 };
 
@@ -47,10 +48,11 @@ function readCredential(configPath) {
 }
 
 function validateArguments(args) {
-  if (!args || typeof args !== 'object' || Array.isArray(args) || Object.keys(args).some(key => !['prompt', 'aspect_ratio'].includes(key))) throw new ToolError('Неверные параметры генерации изображения.');
+  if (!args || typeof args !== 'object' || Array.isArray(args) || Object.keys(args).some(key => !['prompt', 'aspect_ratio', 'reference_ids'].includes(key))) throw new ToolError('Неверные параметры генерации изображения.');
   if (typeof args.prompt !== 'string' || !args.prompt.trim() || Buffer.byteLength(args.prompt) > 16000) throw new ToolError('Нужен текстовый запрос длиной до 16000 байт.');
   const ratio = args.aspect_ratio ?? '1:1';
   if (!RATIOS.includes(ratio)) throw new ToolError('Допустимые пропорции: 1:1, 16:9 и 9:16.');
+  if (args.reference_ids !== undefined && (!Array.isArray(args.reference_ids) || args.reference_ids.length > 14 || args.reference_ids.some(id => typeof id !== 'string'))) throw new ToolError('Допустимо до 14 подготовленных reference_ids.');
   return { model: IMAGE_MODEL, prompt: args.prompt, aspect_ratio: ratio, n: 1, response_format: 'b64_json' };
 }
 
@@ -65,14 +67,22 @@ function decodeImage(payload) {
   return { bytes, mime, extension };
 }
 
-export function createImageTool({ configPath = path.join(os.homedir(), '.codex/config.toml'), outputDirectory = path.join(os.homedir(), 'Pictures/CliRelay'), fetchImpl = fetch } = {}) {
+export function createImageTool({ configPath = path.join(os.homedir(), '.codex/config.toml'), outputDirectory = path.join(os.homedir(), 'Pictures/CliRelay'), referenceRoot, fetchImpl = fetch } = {}) {
+  const references = createReferenceStore({ root: referenceRoot, outputDirectory });
   return async (args, signal) => {
     const request = validateArguments(args);
+    try {
+      references.cleanup();
+      if (args.reference_ids?.length) request.reference_images = args.reference_ids.map(id => references.read(id));
+    }
+    catch { throw new ToolError('Референс недоступен или истёк. Подготовь исходный файл обычным инструментом исполнения Codex.'); }
+    const body = JSON.stringify(request);
+    if (Buffer.byteLength(body) > 8 * 1024 * 1024) throw new ToolError('Запрос с референсами превышает 8 MiB. Подготовь меньшие изображения.');
     const credential = readCredential(configPath);
     const limit = new AbortController();
     const combined = AbortSignal.any([limit.signal, AbortSignal.timeout(310000), ...(signal ? [signal] : [])]);
     try {
-      const response = await fetchImpl(`${BASE_URL}/images/generations`, { method: 'POST', headers: { Authorization: `Bearer ${credential}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(request), redirect: 'error', signal: combined });
+      const response = await fetchImpl(`${BASE_URL}/images/generations`, { method: 'POST', headers: { Authorization: `Bearer ${credential}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body, redirect: 'error', signal: combined });
       if (!response.ok) {
         await response.body?.cancel();
         throw new ToolError(response.status === 429 ? 'Достигнут лимит CliRelay или квота генерации. Повтори запрос позже.' : `Генерация изображения отклонена сервисом (HTTP ${response.status}).`);
@@ -95,7 +105,8 @@ export function createImageTool({ configPath = path.join(os.homedir(), '.codex/c
       const filename = path.join(outputDirectory, `${Date.now()}-${randomUUID()}.${image.extension}`);
       const fd = fs.openSync(filename, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
       try { fs.writeFileSync(fd, image.bytes); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-      return { path: filename, mime_type: image.mime, bytes: image.bytes.length, model: IMAGE_MODEL, markdown: `![Сгенерированное изображение](<${filename}>)` };
+      const reference_id = references.registerOutput(filename, image.mime);
+      return { path: filename, reference_id, mime_type: image.mime, bytes: image.bytes.length, model: IMAGE_MODEL, markdown: `![Сгенерированное изображение](<${filename}>)` };
     } catch (error) {
       if (error instanceof ToolError) throw error;
       throw new ToolError(combined.aborted ? 'Генерация изображения отменена или превысила время ожидания.' : 'Не удалось получить или сохранить изображение CliRelay.');
@@ -120,7 +131,7 @@ export function runStdio({ input = process.stdin, output = process.stdout, gener
       initialized = true;
       const versions = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
       const version = versions.includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2025-11-25';
-      return reply(id, { protocolVersion: version, capabilities: { tools: {} }, serverInfo: { name: 'clirelay-images', version: '1.0.0' }, instructions: 'Use imagegen for real image generation through CliRelay / Nano Banana 2. It returns a saved local file and Markdown. Display exactly that Markdown only after a successful tool result. If permission is denied or the call fails, report the failure; never claim an image was generated and never invent a filename. No OpenAI key is needed. Do not retry failed generations automatically.' });
+      return reply(id, { protocolVersion: version, capabilities: { tools: {} }, serverInfo: { name: 'clirelay-images', version: '1.1.0' }, instructions: 'Use imagegen for real image generation and edits through CliRelay / Nano Banana 2. Pass only opaque reference_ids, never source paths. Prepare user files with the separate helper through the ordinary execution tool under native filesystem approvals, as described by imagegen. Results include reusable reference_id, path and Markdown. Display Markdown only after success. Report denied or failed calls honestly and do not retry automatically.' });
     }
     if (message.method === 'ping') return reply(id, {});
     if (message.method === 'server/discover') return reject(id, -32601, 'Method not found');

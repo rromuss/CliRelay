@@ -5,6 +5,9 @@ Live evidence is recorded in `RELEASE-2026-11-01.md` (text release) and `IMAGES.
 (image extension). For a new deployment keep public access disabled until the
 qualification and old-Hermes checks pass.
 
+Vision, multimodal tool results, image editing and local search are documented
+in `MULTIMODAL.md` for the separately approved `v0.4.6-public-api.3` release.
+
 ## Contract
 
 - Public URL: `https://cliprelay.romus.pro:8443/v1`; only GET models,

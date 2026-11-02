@@ -12,6 +12,8 @@ try {
   let source = '';
   for await (const chunk of process.stdin) source += chunk;
   if (!source.includes('export function runStdio') || Buffer.byteLength(source) > 128 * 1024) throw new Error();
+  // v1.1 imports a reference store; use the reviewed multi-file v3 installer.
+  if (source.includes("'./image-references.mjs'")) throw new Error();
   const home = os.homedir(), directory = path.join(home, '.codex');
   const config = path.join(directory, 'config.toml');
   const original = fs.readFileSync(config, 'utf8');
