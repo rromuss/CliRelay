@@ -128,3 +128,20 @@ The release image can be built without a second GitHub clone by supplying a
 BuildKit context named `frontend-source`, containing `src/frontend/` from a
 clean `git archive` of the pinned panel commit. This overrides only the source
 fetch stage; the Dockerfile's build, locked dependencies and runtime stay intact.
+
+## Stable branch after consolidation
+
+Both `rromuss/CliRelay` and `rromuss/codeProxy` use `hermes-stable` as their
+single working branch. The external API and image-generation changes from
+`codex/public-api-v1` are included in stable; the temporary branch can be removed.
+Older `main`, `dev`, and experimental branches are not merged into this runtime.
+
+The default panel source is now `rromuss/codeProxy` branch `hermes-stable`.
+`FRONTEND_COMMIT` remains pinned to
+`c1da39079aca34a1889e937199955e156d4ee859`, preserving the verified panel source
+while removing the build's dependency on the temporary branch. Future panel
+updates must explicitly change the verified commit pin; moving the branch alone
+does not update the panel used by a build.
+
+The consolidation changes Git branches and the build source reference only.
+It does not deploy a new image or modify the running Hermes/CliRelay services.

@@ -11,7 +11,7 @@ services:
         BUILD_DATE: ${BUILD_DATE:-unknown}
         UI_VERSION: ${UI_VERSION:-dev}
         FRONTEND_REPOSITORY: ${FRONTEND_REPOSITORY:-https://github.com/rromuss/codeProxy.git}
-        FRONTEND_REF: ${FRONTEND_REF:-codex/public-api-v1}
+        FRONTEND_REF: ${FRONTEND_REF:-hermes-stable}
         FRONTEND_COMMIT: ${FRONTEND_COMMIT:-c1da39079aca34a1889e937199955e156d4ee859}
     container_name: cli-proxy-api
     # env_file:

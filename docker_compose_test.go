@@ -102,7 +102,7 @@ func TestRepositoryComposeDoesNotCreateEnvDirectoryForUpdater(t *testing.T) {
 func TestRepositoryBuildPinsHermesPanelSource(t *testing.T) {
 	const (
 		panelRepository = "https://github.com/rromuss/codeProxy.git"
-		panelRef        = "codex/public-api-v1"
+		panelRef        = "hermes-stable"
 		panelCommit     = "c1da39079aca34a1889e937199955e156d4ee859"
 	)
 
