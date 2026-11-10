@@ -42,7 +42,7 @@ func TestHermesFallbackRequiresExactModelsAndMedium(t *testing.T) {
 }
 
 func TestHermesV2VerifiedProfilesAndLegacyV1Compatibility(t *testing.T) {
-	for _, model := range []string{"gemini-3.8-flash-tiered", "gemini-3.6-flash-medium", "gemini-3.1-flash-lite", "mh/gpt-6-luna"} {
+	for _, model := range []string{"mh/gpt-6.1-sol", "mh-claude/claude-opus-5-5", "gemini-3.8-flash-tiered", "gemini-3.6-flash-medium", "gemini-3.1-flash-lite", "mh/gpt-6-luna"} {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
 		c.Request.Header.Set("X-Hermes-Fallback-Policy", "v2")
@@ -62,6 +62,14 @@ func TestHermesV2VerifiedProfilesAndLegacyV1Compatibility(t *testing.T) {
 	}
 	if configureHermesFallback(map[string]any{"hermes_fallback_v2_requested": true}, "gemini-3.6-flash-medium", []byte(`{"reasoning_effort":"high"}`)) == nil {
 		t.Fatal("unverified profile accepted")
+	}
+	for _, model := range []string{"mh/gpt-6.1-sol", "mh-claude/claude-opus-5-5"} {
+		for _, body := range []string{`{"reasoning_effort":"high"}`, `{"reasoning_effort":"medium","stream":true}`, `{"stream":false}`} {
+			meta := map[string]any{"hermes_fallback_v2_requested": true, "allowed-channels": "synthetic"}
+			if configureHermesFallback(meta, model, []byte(body)) == nil || meta[coreexecutor.SinglePickMetadataKey] == true || meta["allowed-channels"] != "synthetic" {
+				t.Fatal("unverified ModelHub profile accepted or scope changed", model, body)
+			}
+		}
 	}
 	if err := configureHermesFallback(map[string]any{"hermes_fallback_requested": true}, "gemini-3.6-flash-tiered", []byte(`{"reasoning_effort":"medium"}`)); err != nil {
 		t.Fatal("legacy v1 broken", err)

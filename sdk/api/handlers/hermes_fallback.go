@@ -28,10 +28,12 @@ func configureHermesFallback(meta map[string]any, model string, body []byte) *in
 	}
 	if v2 {
 		profiles := map[string]string{
-			"gemini-3.8-flash-tiered": "medium",
-			"gemini-3.6-flash-medium": "medium",
-			"gemini-3.1-flash-lite":   "medium",
-			"mh/gpt-6-luna":           "medium",
+			"mh/gpt-6.1-sol":            "medium",
+			"mh-claude/claude-opus-5-5": "medium",
+			"gemini-3.8-flash-tiered":   "medium",
+			"gemini-3.6-flash-medium":   "medium",
+			"gemini-3.1-flash-lite":     "medium",
+			"mh/gpt-6-luna":             "medium",
 		}
 		effort, ok := profiles[model]
 		if !ok || gjson.GetBytes(body, "reasoning_effort").String() != effort || gjson.GetBytes(body, "stream").Bool() {

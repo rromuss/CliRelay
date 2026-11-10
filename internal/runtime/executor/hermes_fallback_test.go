@@ -186,6 +186,52 @@ func TestHermesFallbackLunaMediumAndCompletedToolResultReachCompatUpstream(t *te
 	}
 }
 
+func TestHermesV2ModelHubProfilesPreserveMediumAndHistoryAtUpstream(t *testing.T) {
+	for _, model := range []string{"gpt-6.1-sol", "claude-opus-5-5"} {
+		t.Run(model, func(t *testing.T) {
+			var sent []byte
+			var count atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				count.Add(1)
+				sent, _ = io.ReadAll(r.Body)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = io.WriteString(w, `{"error":{"message":"synthetic no capacity"}}`)
+			}))
+			defer server.Close()
+			payload := []byte(`{"model":"` + model + `","reasoning_effort":"medium","max_tokens":16384,"messages":[{"role":"user","content":"synthetic"},{"role":"assistant","tool_calls":[{"id":"call-1","type":"function","function":{"name":"synthetic_tool","arguments":"{}"}}]},{"role":"tool","tool_call_id":"call-1","content":"already completed"}]}`)
+			opts := cliproxyexecutor.Options{SourceFormat: sdktranslator.FromString("openai"), OriginalRequest: payload, Metadata: map[string]any{
+				cliproxyexecutor.HermesFallbackMetadataKey:   true,
+				cliproxyexecutor.HermesFallbackV2MetadataKey: true,
+				cliproxyexecutor.SinglePickMetadataKey:       true,
+			}}
+			auth := &cliproxyauth.Auth{Attributes: map[string]string{"base_url": server.URL + "/v1", "api_key": "synthetic"}}
+			req := cliproxyexecutor.Request{Model: model, Payload: payload}
+			cfg := &config.Config{RequestRetry: 3}
+			var err error
+			if model == "claude-opus-5-5" {
+				auth.Attributes["base_url"] = server.URL
+				auth.Attributes["skip_anthropic_processing"] = "true"
+				_, err = NewClaudeExecutor(cfg).Execute(context.Background(), auth, req, opts)
+				if gjson.GetBytes(sent, "thinking.type").String() != "enabled" || gjson.GetBytes(sent, "thinking.budget_tokens").Int() != 8192 {
+					t.Fatal("Opus medium did not reach the native upstream")
+				}
+			} else {
+				_, err = NewOpenAICompatExecutor("modelhub", cfg).Execute(context.Background(), auth, req, opts)
+				if gjson.GetBytes(sent, "reasoning_effort").String() != "medium" {
+					t.Fatal("Sol medium did not reach the upstream")
+				}
+			}
+			status, ok := err.(interface{ StatusCode() int })
+			if !ok || status.StatusCode() != http.StatusServiceUnavailable || count.Load() != 1 {
+				t.Fatal("failed request was retried or replaced", err, count.Load())
+			}
+			if gjson.GetBytes(sent, "model").String() != model || !bytes.Contains(sent, []byte("already completed")) || !bytes.Contains(sent, []byte("call-1")) {
+				t.Fatal("model or completed tool history changed")
+			}
+		})
+	}
+}
+
 func TestHermesFallbackSuppressesEveryExecutorRetryAndEndpointFallback(t *testing.T) {
 	cfg := &config.Config{RequestRetry: 3}
 	urls := []string{"https://first.invalid", "https://second.invalid"}

@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v0.4.6-hermes-fallback.4 — overlay 0.25.27
+
+- В существующий `v2` добавлены точные профили `mh/gpt-6.1-sol` medium и
+  `mh-claude/claude-opus-5-5` medium для нового основного каскада Hermes.
+- Legacy v1/v2 и manual-v1 оставлены совместимыми со стендом и другими
+  клиентами. Неверное effort/streaming отклоняется до исполнения; single-pick
+  и allowed-channels не меняют существующие границы авторизации.
+- Handler regressions проверяют обе новые пары, отказ от других effort и
+  streaming, неизменность scopes и совместимость старых маршрутов. Actual HTTP
+  mocks подтверждают medium, точную модель, completed tool result и одну попытку.
+- Выпуск сохраняет текущий SQLite runtime/panel через retained-base image;
+  source, image identity и проверка production фиксируются в release record.
+
 ## v0.4.6-public-api.2 — генерация изображений через CliRelay
 
 - Добавлен узкий внешний Images API для Nano Banana 2 через тот же native
